@@ -127,3 +127,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# pycharm project things
+.idea/
+venv/
+
+# project output
+event_log.txt
+*.png

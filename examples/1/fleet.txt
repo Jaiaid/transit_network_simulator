@@ -1,0 +1,12 @@
+bus 2 1 1 2
+bus2 3 1 1 2
+bus 2 1 1 2
+bus2 3 1 1 2
+bus 2 1 1 2
+bus2 3 1 1 2
+bus 2 1 1 2
+bus2 3 1 1 2
+bus 2 1 1 2
+bus2 3 1 1 2
+bus 2 1 1 2
+bus2 3 1 1 2

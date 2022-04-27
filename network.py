@@ -65,6 +65,12 @@ class Network:
     def get_edge(self, src_id: int, dst_id: int) -> Edge:
         return self.edge_dict[(src_id, dst_id)]
 
+    def get_node(self, node_id: int) -> Node:
+        return self.node_list[node_id]
+
+    def get_demand(self, node_id: int) -> dict[int, int]:
+        return self.node_data.get_demand_dict(node_id=node_id)
+
     def load_route_data(self, network_route_filepath: str):
         with open(network_route_filepath) as fin:
             route_id = 0

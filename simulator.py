@@ -20,6 +20,9 @@ class Simulator:
         self.dispatcher_strategy_class: DispatchStrategy = None
         self.stop_list = []
 
+    def get_network(self) -> Network:
+        return self.network
+
     '''
     will load python module on runtime
     '''

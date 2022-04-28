@@ -29,13 +29,15 @@ class Vehicle:
     def enter(self, edge, pass_time: int):
         with edge.request() as req:
             yield req
-            Logger.log("route {0} vehicle {1} entering edge {2},{3} at {4}".format(self.route_id, self.id,
-                                                                                    edge.src_id, edge.dst_id,
-                                                                                    self.env.now))
+            Logger.log(
+                "route {0} vehicle {1} entering edge {2},{3} of length {4} at {5}".format(
+                    self.route_id, self.id, edge.src_id, edge.dst_id, edge.length, self.env.now)
+            )
             yield self.env.timeout(pass_time)
-            Logger.log("route {0} vehicle {1} leaving edge {2},{3} at {4}".format(self.route_id, self.id,
-                                                                                   edge.src_id, edge.dst_id,
-                                                                                   self.env.now))
+            Logger.log(
+                "route {0} vehicle {1} leaving edge {2},{3} of length {4} at {5}".format(
+                    self.route_id, self.id, edge.src_id, edge.dst_id, edge.length, self.env.now)
+            )
 
     def leave(self):
         pass

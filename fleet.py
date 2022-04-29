@@ -20,7 +20,7 @@ class Fleet:
                 capacity = int(tokens[1])
                 length = float(tokens[2])
                 speed = float(tokens[3])
-                count = int(tokens[3])
+                count = int(tokens[4])
 
                 for i in range(count):
                     self.vehicle_dict[vehicle_id] = Vehicle(vehicle_id=vehicle_id, capacity=capacity, length=length,

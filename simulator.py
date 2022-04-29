@@ -8,7 +8,7 @@ from dispatchstrategy import DispatchStrategy
 from dispatcher import Dispatcher
 from logger import Logger
 
-SIMTIME_MAX = 1000
+SIMTIME_MAX = 10000000
 
 
 class Simulator:

@@ -9,13 +9,13 @@ DATA_FILE_NAME = "event_log.txt"
 REGEX_VEHICLE_EVENT_LINE_TYPE1 = r"^route (\d+) vehicle (\d+) ([a-z_]+) (\d+) at (\d+\.?\d*)"
 REGEX_VEHICLE_EVENT_LINE_TYPE2 = r"^route (\d+) vehicle (\d+) ([a-z_]+) at (\d+\.?\d*)"
 REGEX_VEHICLE_EVENT_LINE_TYPE3 = \
-    r"^route (\d+) vehicle (\d+) ([a-z_]+) edge (\d+),(\d+) of length (\d+) at (\d+\.?\d*)"
+    r"^route (\d+) vehicle (\d+) ([a-z_]+) edge (\d+),(\d+) of length (\d+\.?\d*) at (\d+\.?\d*)"
 REGEX_VEHICLE_EVENT_LINE_TYPE4 = \
     r"^route (\d+) vehicle (\d+) ([a-z_]+) (\d+) passenger for (\d+) from (\d+) at (\d+\.?\d*)"
 REGEX_VEHICLE_EVENT_LINE_TYPE5 = r"^route (\d+) vehicle (\d+) ([a-z_]+) (\d+) passenger for (\d+) at (\d+\.?\d*)"
 REGEX_VEHICLE_EVENT_LINE_TYPE6 = r"^total vehicle (\d+) at (\d+\.?\d*)"
 
-VELOCITY_TIME_RESOLUTION_SEC = 1
+VELOCITY_TIME_RESOLUTION_SEC = 600
 
 REGEX_WAITTIME = r"^Waiting time: (\d*\.\d+)"
 REGEX_EVACTIME = r"^Total Evacuation Time: (\d*\.\d+)"
@@ -35,9 +35,9 @@ class SpeedBin:
             self.running_vehicle_id_dict[vehicle_id] = 0
         self.running_vehicle_id_dict[vehicle_id] += 1
 
-    def get_mean(self) -> float:
+    def get_mean(self, timestep: float) -> float:
         if len(self.running_vehicle_id_dict.keys()) > 0:
-            return self.total_travel_length / len(self.running_vehicle_id_dict.keys())
+            return self.total_travel_length / (len(self.running_vehicle_id_dict.keys()) * timestep)
         return 0
 
 
@@ -89,7 +89,7 @@ class SpeedBinContainer:
         x_coords = sorted(list(self.speed_bin_dict.keys()))
         y_coords = []
         for x in x_coords:
-            y_coords.append(self.speed_bin_dict[x].get_mean())
+            y_coords.append(self.speed_bin_dict[x].get_mean(timestep=self.resolution))
 
         ax_avg_speed.plot(x_coords, y_coords)
         ax_avg_speed.set_title("average velocity in {0}s resolution".format(self.resolution))
@@ -128,7 +128,7 @@ class GraphGenerator:
                 event_type = result.groups()[2]
 
                 if event_type == "trip_start":
-                    timestamp = float(result.groups()[3])
+                    timestamp = float(result.groups()[4])
                     # hourly, hence 3600
                     hour = int(timestamp // 3600)
                     if hour not in self.hourly_trip_start_stat:
@@ -136,18 +136,17 @@ class GraphGenerator:
                     else:
                         self.hourly_trip_start_stat[hour] += 1
                 elif event_type == "trip_completion":
-                    timestamp = float(result.groups()[3])
+                    timestamp = float(result.groups()[4])
                     # hourly, hence 3600
                     hour = int(timestamp // 3600)
                     if hour not in self.hourly_trip_completion_stat:
-                        self.hourly_trip_completion_stat[hour] = 1
-                    else:
-                        self.hourly_trip_completion_stat[hour] += 1
+                        self.hourly_trip_completion_stat[hour] = 0
+                    self.hourly_trip_completion_stat[hour] += 1
                 elif event_type == "entering":
                     timestamp = int(result.groups()[6])
                     self.speedbin_container.vehicle_enter_data_entry(vehicle_id=vehicle_id, entry_time=timestamp)
                 elif event_type == "leaving":
-                    length = int(result.groups()[5])
+                    length = float(result.groups()[5])
                     timestamp = int(result.groups()[6])
                     self.speedbin_container.vehicle_leave_data_entry(vehicle_id=vehicle_id, length=length,
                                                                      leave_time=timestamp)

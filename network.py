@@ -95,8 +95,8 @@ class Network:
                                             dest_id_passenger_dict=self.node_data.get_demand_dict(src_id)))
 
                 for token in line.split():
-                    if int(token) != INF_CAP:
-                        self.edge_dict[(src_id, dst_id)] = Edge(src_id, dst_id, self.env, int(token),
+                    if float(token) != INF_CAP:
+                        self.edge_dict[(src_id, dst_id)] = Edge(src_id, dst_id, self.env, float(token),
                                                                 self.edge_cap_data.get_cap(src_id, dst_id))
                     dst_id += 1
 

@@ -12,7 +12,7 @@ class Edge(simpy.Resource):
         self.src_id = src_id
         self.dst_id = dst_id
         self.env = env
-        super().__init__(env, capacity)
+        super().__init__(env, max(capacity, 1))
 
 
 class Node(simpy.Resource):

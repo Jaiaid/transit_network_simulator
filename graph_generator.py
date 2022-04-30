@@ -47,6 +47,9 @@ class SpeedBinContainer:
         self.speed_bin_dict: dict[int, SpeedBin] = {}
         self.vehicle_latest_entry_dict: dict[int, int] = {}
 
+    def set_time_step(self, avg_velocity_time_step_sec: int):
+        self.resolution = avg_velocity_time_step_sec
+
     def vehicle_enter_data_entry(self, vehicle_id: int, entry_time: int):
         self.vehicle_latest_entry_dict[vehicle_id] = entry_time
 
@@ -106,7 +109,9 @@ class GraphGenerator:
         self.hourly_speed_stat: dict[int, float] = {}
         self.speedbin_container = SpeedBinContainer(resolution=VELOCITY_TIME_RESOLUTION_SEC)
 
-    def __analyze(self):
+    def __analyze_event_log(self, avg_velocity_time_step_sec: int):
+        self.speedbin_container.set_time_step(avg_velocity_time_step_sec=avg_velocity_time_step_sec)
+
         with open(DATA_FILE_NAME) as log_fin:
             for logline in log_fin.readlines():
                 logline = logline.split('\n')[0]
@@ -154,11 +159,9 @@ class GraphGenerator:
                     pass
                 elif event_type == "offloading":
                     pass
-        # print(self.hourly_trip_start_stat)
-        # print(self.hourly_trip_completion_stat)
 
-    def generate(self):
-        self.__analyze()
+    def generate(self, avg_velocity_time_step_sec: int):
+        self.__analyze_event_log(avg_velocity_time_step_sec=avg_velocity_time_step_sec)
 
         fig_trip_start, ax_trip_start = plot.subplots()
         fig_trip_complete, ax_trip_complete = plot.subplots()

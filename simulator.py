@@ -8,8 +8,6 @@ from dispatchstrategy import DispatchStrategy
 from dispatcher import Dispatcher
 from logger import Logger
 
-SIMTIME_MAX = 10000000
-
 
 class Simulator:
     def __init__(self):
@@ -72,7 +70,8 @@ class Simulator:
 
         self.fleet.load_data(filepath=fleetdata_filepath)
 
-    def simulate(self, dispatcher_strategy_full_import_string: str, vehicle_strategy_full_import_string: str):
+    def simulate(self, dispatcher_strategy_full_import_string: str, vehicle_strategy_full_import_string: str,
+                 time_length: int):
         Logger.log("loading strategy classes")
         # load dispatcher and vehicle strategy
         self.load_strategy(dispatcher_strategy_full_import_string, vehicle_strategy_full_import_string)
@@ -90,4 +89,4 @@ class Simulator:
         # make dispatcher alive
         dispatcher.life_signal.succeed()
         # start whole environment
-        self.env.run(until=SIMTIME_MAX)
+        self.env.run(until=time_length)

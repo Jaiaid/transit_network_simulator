@@ -1,5 +1,8 @@
+import os
+
 import simpy
-import importlib
+import importlib.util
+import sys
 
 from network import Network
 from fleet import Fleet
@@ -25,26 +28,30 @@ class Simulator:
     will load python module on runtime
     '''
     def load_vehicle_strategy(self, vehicle_strategy_full_import_string: str):
-        try:
-            import_data = vehicle_strategy_full_import_string.split(".")
-            module_path = ".".join(import_data[:-1])
-            class_name = import_data[-1]
-            module = importlib.import_module(module_path)
-            self.vehicle_strategy_class = getattr(module, class_name)
-        except ModuleNotFoundError or AttributeError as e:
-            print(e)
-            assert False, "exception in setting strategy, should exit"
+        import_data = vehicle_strategy_full_import_string.split(".")
+        module_path = ".".join(import_data[:-1])
+        # extract module name by removing .py from basepath
+        module_name = ".".join(os.path.basename(module_path).split(".")[:-1])
+        class_name = import_data[-1]
+
+        spec = importlib.util.spec_from_file_location(module_name, module_path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module
+        spec.loader.exec_module(module)
+        self.vehicle_strategy_class = getattr(module, class_name)
 
     def load_dispatcher_strategy(self, dispatcher_strategy_full_import_string: str):
-        try:
-            import_data = dispatcher_strategy_full_import_string.split(".")
-            module_path = ".".join(import_data[:-1])
-            class_name = import_data[-1]
-            module = importlib.import_module(module_path)
-            self.dispatcher_strategy_class = getattr(module, class_name)
-        except ModuleNotFoundError or AttributeError as e:
-            print(e)
-            assert False, "exception in setting strategy, should exit"
+        import_data = dispatcher_strategy_full_import_string.split(".")
+        module_path = ".".join(import_data[:-1])
+        # extract module name by removing .py from basepath
+        module_name = ".".join(os.path.basename(module_path).split(".")[:-1])
+        class_name = import_data[-1]
+
+        spec = importlib.util.spec_from_file_location(module_name, module_path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module
+        spec.loader.exec_module(module)
+        self.dispatcher_strategy_class = getattr(module, class_name)
 
     def load_strategy(self, dispatcher_strategy_full_import_string: str, vehicle_strategy_full_import_string: str):
         self.load_dispatcher_strategy(dispatcher_strategy_full_import_string=dispatcher_strategy_full_import_string)
@@ -69,6 +76,9 @@ class Simulator:
         self.network.load_route_data(network_route_filepath=routedata_filepath)
 
         self.fleet.load_data(filepath=fleetdata_filepath)
+
+    def get_time(self) -> int:
+        return self.env.now
 
     def simulate(self, dispatcher_strategy_full_import_string: str, vehicle_strategy_full_import_string: str,
                  time_length: int):

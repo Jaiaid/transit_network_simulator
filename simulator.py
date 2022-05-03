@@ -100,3 +100,6 @@ class Simulator:
         dispatcher.life_signal.succeed()
         # start whole environment
         self.env.run(until=time_length)
+
+    def stop_simulation(self):
+        pass

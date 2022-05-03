@@ -17,6 +17,33 @@ class Window(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
+        self.simulation_thread = SimulationThread(window_object=self, duration=self.simulation_duration_slider.value())
+        self.analysis_thread = None
+
+    def __check_and_inform_pymodule_load_status(self, script_full_path: str, class_name: str) -> bool:
+        try:
+            if class_name == "DispatchStrategy":
+                self.simulation_thread.simulator.load_dispatcher_strategy(
+                    dispatcher_strategy_full_import_string=
+                    self.dispatcher_strategy_filepath.text() + "." + class_name)
+            elif class_name == "VehicleStrategy":
+                self.simulation_thread.simulator.load_vehicle_strategy(
+                    vehicle_strategy_full_import_string=
+                    self.vehicle_strategy_filepath.text() + "." + class_name)
+            else:
+                raise ModuleNotFoundError
+        except ModuleNotFoundError or AttributeError as e:
+            self.update_message(
+                "module not found error or attribute error in module loading, please check selected script"
+            )
+            self.enable_ui(change_simulate_button=True)
+            return False
+        except Exception as e:
+            self.update_message(
+                "unknown exception in module loading: {0}, please check selected script".format(e.__str__()))
+            return False
+        self.update_message("class {0} can be loaded successfully from {1}".format(class_name, script_full_path))
+        return True
 
     def disable_ui(self, change_simulate_button: bool):
         if change_simulate_button:
@@ -57,11 +84,13 @@ class Window(QMainWindow, Ui_MainWindow):
         filedialog.setViewMode(QFileDialog.List)
         filedialog.setNameFilter("python script (*.py)")
         if filedialog.exec_():
-            filename = filedialog.selectedFiles()[0]
-            self.dispatcher_strategy_filepath.setText(filename)
+            filepath = filedialog.selectedFiles()[0]
+            self.dispatcher_strategy_filepath.setText(filepath)
 
             if self.input_dir_path.text() is not None:
                 self.update_dir_content(self.input_dir_path.text())
+
+            self.__check_and_inform_pymodule_load_status(script_full_path=filepath, class_name="DispatchStrategy")
 
     def select_vehicle_strategy_path(self):
         filedialog = QFileDialog()
@@ -69,11 +98,13 @@ class Window(QMainWindow, Ui_MainWindow):
         filedialog.setViewMode(QFileDialog.List)
         filedialog.setNameFilter("python script (*.py)")
         if filedialog.exec_():
-            filename = filedialog.selectedFiles()[0]
-            self.vehicle_strategy_filepath.setText(filename)
+            filepath = filedialog.selectedFiles()[0]
+            self.vehicle_strategy_filepath.setText(filepath)
 
             if self.input_dir_path.text() is not None:
                 self.update_dir_content(self.input_dir_path.text())
+
+            self.__check_and_inform_pymodule_load_status(script_full_path=filepath, class_name="VehicleStrategy")
 
     def update_dir_content(self, content: str):
         self.directory_content.clear()
@@ -93,13 +124,26 @@ class Window(QMainWindow, Ui_MainWindow):
         self.simulate_button.setDisabled(not all_found)
 
     def start_simulation(self):
-        self.simulation_progress_bar.setValue(0)
-        simulation_thread = SimulationThread(window_object=self, duration=self.simulation_duration_slider.value())
-        simulation_thread.start()
+        if self.simulate_button.text() == "stop":
+            self.simulation_thread.stop()
+            self.simulate_button.setText("simulate")
+        else:
+            try:
+                self.simulation_progress_bar.setValue(0)
+                self.simulation_thread = SimulationThread(window_object=self,
+                                                          duration=self.simulation_duration_slider.value())
+                self.simulation_thread.start()
+                self.update_message("simulation in progress...")
+            except Exception as e:
+                print(e)
 
     def start_analysis(self):
-        analysis_thread = AnalysisThread(window_object=self, time_step=self.analysis_time_step_slider.value())
-        analysis_thread.start()
+        self.analysis_thread = AnalysisThread(window_object=self, time_step=self.analysis_time_step_slider.value())
+        try:
+            self.update_message("analysis in progress...")
+            self.analysis_thread.start()
+        except Exception as e:
+            print(e)
 
 
 class AnalysisThread(threading.Thread):
@@ -108,8 +152,11 @@ class AnalysisThread(threading.Thread):
         self.time_step = time_step
         self.window_object = window_object
 
+    def set_time_step(self, time_step: int):
+        self.time_step = time_step
+
     def run(self):
-        self.window_object.disable_ui(change_simulate_button=False)
+        self.window_object.disable_ui(change_simulate_button=True)
         try:
             analyzer = GraphGenerator()
             analyzer.generate(avg_velocity_time_step_sec=self.time_step)
@@ -119,7 +166,7 @@ class AnalysisThread(threading.Thread):
         except Exception as e:
             self.window_object.update_message(e.__str__())
         finally:
-            self.window_object.enable_ui(change_simulate_button=False)
+            self.window_object.enable_ui(change_simulate_button=True)
 
 
 class SimulationThread(threading.Thread):
@@ -127,6 +174,11 @@ class SimulationThread(threading.Thread):
         super().__init__()
         self.duration = duration
         self.window_object = window_object
+        self.simulator: Simulator = Simulator()
+        self.simulation_progress_observer_thread = None
+
+    def set_duration(self, duration: int):
+        self.duration = duration
 
     def run(self):
         self.window_object.disable_ui(change_simulate_button=True)
@@ -146,11 +198,8 @@ class SimulationThread(threading.Thread):
             if os.path.exists("{0}/route_stops.txt".format(input_dir)):
                 routestop_filepath = "{0}/route_stops.txt".format(input_dir)
 
-            # init necessary class and modules
-            simulator: Simulator = Simulator()
-
             try:
-                simulator.load_strategy(
+                self.simulator.load_strategy(
                     dispatcher_strategy_full_import_string=
                     self.window_object.dispatcher_strategy_filepath.text()+".DispatchStrategy",
                     vehicle_strategy_full_import_string=
@@ -169,7 +218,7 @@ class SimulationThread(threading.Thread):
                 return
 
             # provide datafile and prepare internal datastructure and environment
-            simulator.load_data(
+            self.simulator.load_data(
                 networkdata_filepath=network_filepath,
                 demanddata_filepath=demand_filepath,
                 routedata_filepath=route_filepath,
@@ -179,12 +228,12 @@ class SimulationThread(threading.Thread):
                 perroutestopdata_filepath=routestop_filepath
             )
 
-            simulation_progress_observer_thread = SimulationProgressThread(
-                self.window_object, simulator=simulator, duration=self.duration)
-            simulation_progress_observer_thread.start()
+            self.simulation_progress_observer_thread = SimulationProgressThread(
+                self.window_object, simulator=self.simulator, duration=self.duration)
+            self.simulation_progress_observer_thread.start()
 
             Logger.init()
-            simulator.simulate(
+            self.simulator.simulate(
                 dispatcher_strategy_full_import_string=
                 self.window_object.dispatcher_strategy_filepath.text()+".DispatchStrategy",
                 vehicle_strategy_full_import_string=
@@ -201,8 +250,15 @@ class SimulationThread(threading.Thread):
             self.window_object.update_message(e.__str__())
         finally:
             self.window_object.enable_ui(change_simulate_button=True)
-            if simulation_progress_observer_thread is not None:
-                simulation_progress_observer_thread.exit()
+            if self.simulation_progress_observer_thread is not None:
+                self.simulation_progress_observer_thread.stop()
+            # wait for closing of progress observer thread
+            while self.simulation_progress_observer_thread.is_alive():
+                time.sleep(0.01)
+            self.window_object.simulation_progress_bar.setValue(100)
+
+    def stop(self):
+        self.simulator.stop_simulation()
 
 
 class SimulationProgressThread(threading.Thread):
@@ -212,13 +268,15 @@ class SimulationProgressThread(threading.Thread):
         self.simulator_object = simulator
         self.window_object = window_object
         self.exit_flag = False
+        self.done = False
 
     def run(self):
         while self.window_object.simulation_progress_bar.value() < 100 and not self.exit_flag:
             self.window_object.simulation_progress_bar.setValue((self.simulator_object.get_time() * 100)//self.duration)
             time.sleep(0.01)
+        self.done = True
 
-    def exit(self):
+    def stop(self):
         self.exit_flag = True
 
 

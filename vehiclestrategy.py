@@ -1,7 +1,7 @@
 import simpy
 import copy
 
-from networkprimitive import Node, Route
+from networkprimitive import Node, Edge, Route
 from vehicle import Vehicle
 from dispatcher import Dispatcher
 
@@ -13,6 +13,9 @@ class VehicleStrategy:
         self.vehicle = vehicle
         self.forward_route_node_id_list = []
         self.backward_route_node_id_list = []
+
+    def edge_travarse_time(self, edge: Edge) -> int:
+        return int(edge.length // self.vehicle.speed)
 
     def plan_trip(self):
         route = self.vehicle.network.get_route(self.vehicle.route_id)

@@ -3,11 +3,11 @@ import simpy
 from logger import Logger
 
 
-class Edge(simpy.Resource):
+class Edge(simpy.Container):
     def __len__(self):
         return self.length
 
-    def __init__(self, src_id: int, dst_id: int, env: simpy.Environment, length: int, capacity: int):
+    def __init__(self, src_id: int, dst_id: int, env: simpy.Environment, length: float, capacity: int):
         self.length = length
         self.src_id = src_id
         self.dst_id = dst_id
@@ -35,6 +35,11 @@ class Node(simpy.Resource):
 
     def fill(self, dest_id_passenger_inc_dict: dict[int, int]):
         pass
+
+    def get_demand_to(self, dest_id):
+        if dest_id in self.dest_id_passenger_dict:
+            return self.dest_id_passenger_dict[dest_id]
+        return 0
 
 
 class Route:

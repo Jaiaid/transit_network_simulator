@@ -27,7 +27,7 @@ class Vehicle:
         self.strategy = strategy_class(self.env, self.dispatcher, self)
 
     def enter(self, edge, pass_time: int):
-        with edge.request() as req:
+        with edge.put(self.length) as req:
             yield req
             Logger.log(
                 "route {0} vehicle {1} entering edge {2},{3} of length {4} at {5}".format(

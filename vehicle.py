@@ -14,6 +14,7 @@ class Vehicle:
         self.length = length
         self.speed = speed
         self.trip_count = 0
+        self.departure_time = 0
         self.env = env
         self.dispatcher_signal = self.env.event()
         self.network: Network = None
@@ -21,6 +22,9 @@ class Vehicle:
         self.dispatcher = None
         self.strategy = None
         self.repeat = True
+
+    def set_departure_time(self, departure_time: int):
+        self.departure_time = departure_time
 
     def set_strategy(self, dispatcher, strategy_class: type.__class__):
         self.dispatcher = dispatcher
@@ -79,6 +83,8 @@ class Vehicle:
 
     def process(self):
         yield self.dispatcher.global_vehicle_signal
+
+        self.env.timeout(delay=self.departure_time)
         while self.repeat:
             # first plan trip
             self.strategy.plan_trip()

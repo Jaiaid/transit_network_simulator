@@ -19,6 +19,10 @@ class TransitVehicleStrategy(VehicleStrategy):
         self.backward_route_node_id_list = []
         self.node_id_demand_dict = {}
 
+    @staticmethod
+    def __id_first_occurance_idx(id_list: list[int], element: int) -> int:
+        return id_list.index(element)
+
     def edge_travarse_time(self, edge: Edge) -> int:
         return int(edge.length / self.vehicle.speed)
 
@@ -36,53 +40,64 @@ class TransitVehicleStrategy(VehicleStrategy):
                 self.node_id_demand_dict[node_id] = demand
 
     def forward_pass(self):
-        src = self.forward_route_node_id_list[0]
-        start_node_idx = 0
-        remaining_demand = 1
+        start_node_idx = self.forward_route_node_id_list.index(self.vehicle.current_node_id)
+        src = self.vehicle.current_node_id
 
-        while remaining_demand > 0:
-            remaining_demand = 0
-            for node_id in enumerate(self.forward_route_node_id_list[start_node_idx + 1:]):
-                edge = self.vehicle.network.get_edge(src, node_id)
-                yield self.env.process(self.vehicle.enter(edge=edge, pass_time=self.edge_travarse_time(edge=edge)))
+        for i in range(start_node_idx+1, len(self.forward_route_node_id_list)):
+            node_id = self.forward_route_node_id_list[i]
+            edge = self.vehicle.network.get_edge(src, node_id)
+            yield self.env.process(self.vehicle.enter(edge=edge, pass_time=self.edge_travarse_time(edge=edge)))
 
-                yield self.env.process(self.vehicle.wait(time=STOP_STANDING_TIME))
-                if node_id in self.node_id_demand_dict:
-                    stop = self.vehicle.network.get_node(src)
-                    self.passenger_fill(stop)
-                    self.passenger_drain(stop)
-                    yield self.env.process(self.vehicle.wait(time=SHELTER_EVACUATION_TIME))
-                src = node_id
+            yield self.env.process(self.vehicle.wait(time=STOP_STANDING_TIME))
+            if node_id in self.node_id_demand_dict:
+                stop = self.vehicle.network.get_node(src)
+                self.passenger_fill(stop)
+                self.passenger_drain(stop)
+                yield self.env.process(self.vehicle.wait(time=SHELTER_EVACUATION_TIME))
+            src = node_id
 
-            src = self.backward_route_node_id_list[0]
-            start_node_idx = len(self.forward_route_node_id_list) - 1
-            for node_no, node_id in enumerate(self.backward_route_node_id_list[1:]):
+    def backward_pass(self):
+        # first evaluate if backward pass needs refining
+        # as passengers are picked up greedily from earlier stop,
+        # it maybe the case that vehicle don't need to return at the beginning to continue the loop
+        # think like bubble sort
+        refined_backward_route_node_id_list = [self.backward_route_node_id_list[0]]
+        node_id_list_inbetween_stops = []
+        for node_no, node_id in enumerate(self.backward_route_node_id_list[1:]):
+            if node_id in self.node_id_demand_dict and self.node_id_demand_dict[node_id] == 0:
+                break
+            elif node_id in self.node_id_demand_dict and self.node_id_demand_dict[node_id] == 0:
+                refined_backward_route_node_id_list += node_id_list_inbetween_stops
+                node_id_list_inbetween_stops = []
+            else:
+                node_id_list_inbetween_stops.append(node_id)
+
+        if len(refined_backward_route_node_id_list) > 1:
+            src = refined_backward_route_node_id_list[0]
+            for node_no, node_id in enumerate(refined_backward_route_node_id_list[1:]):
                 # reverse is done assuming that reverse edge exist even if not mentioned
                 edge = self.vehicle.network.get_edge(node_id, src)
                 yield self.env.process(self.vehicle.enter(edge=edge, pass_time=self.edge_travarse_time(edge=edge)))
 
+                src = node_id
                 if node_id in self.node_id_demand_dict and self.node_id_demand_dict[node_id] == 0:
                     break
-                elif node_id in self.node_id_demand_dict and self.node_id_demand_dict[node_id] > 0:
-                    remaining_demand += self.node_id_demand_dict[node_id]
-                src = node_id
-                start_node_idx -= 1
-
-        self.signal_completion()
-
-    def backward_pass(self):
-        route = self.vehicle.network.get_route(self.vehicle.route_id)
-        self.backward_route_node_id_list = list(reversed(route.route_node_list))
-
-        src = self.backward_route_node_id_list[0]
-        start_node_idx = len(self.forward_route_node_id_list) - 1
-        for node_no, node_id in enumerate(self.backward_route_node_id_list[1:]):
-            # reverse is done assuming that reverse edge exist even if not mentioned
-            edge = self.vehicle.network.get_edge(node_id, src)
-            yield self.env.process(self.vehicle.enter(edge=edge, pass_time=self.edge_travarse_time(edge=edge)))
-
-            src = node_id
-            start_node_idx -= 1
+            self.vehicle.current_node_id = src
+        else:
+            self.signal_completion()
+            self.vehicle.current_node_id = refined_backward_route_node_id_list[0]
+        # route = self.vehicle.network.get_route(self.vehicle.route_id)
+        # self.backward_route_node_id_list = list(reversed(route.route_node_list))
+        #
+        # src = self.backward_route_node_id_list[0]
+        # start_node_idx = len(self.forward_route_node_id_list) - 1
+        # for node_no, node_id in enumerate(self.backward_route_node_id_list[1:]):
+        #     # reverse is done assuming that reverse edge exist even if not mentioned
+        #     edge = self.vehicle.network.get_edge(node_id, src)
+        #     yield self.env.process(self.vehicle.enter(edge=edge, pass_time=self.edge_travarse_time(edge=edge)))
+        #
+        #     src = node_id
+        #     start_node_idx -= 1
 
     def passenger_fill(self, stop: Node) -> int:
         demand_dict = self.vehicle.network.get_demand(stop.id)

@@ -15,6 +15,7 @@ class Vehicle:
         self.speed = speed
         self.trip_count = 0
         self.departure_time = 0
+        self.current_node_id = -1
         self.env = env
         self.dispatcher_signal = self.env.event()
         self.network: Network = None

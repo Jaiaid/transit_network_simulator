@@ -7,7 +7,7 @@ class Fleet:
         self.env = env
         self.vehicle_dict: dict[int, Vehicle] = {}
 
-    def __len__(self):
+    def size(self):
         return len(self.vehicle_dict)
 
     def load_data(self, filepath:str):

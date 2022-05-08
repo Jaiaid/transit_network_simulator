@@ -40,21 +40,31 @@ class TransitVehicleStrategy(VehicleStrategy):
                 self.node_id_demand_dict[node_id] = demand
 
     def forward_pass(self):
+        # TODO
+        # as a node may be repeated start_node_idx may not be the index of first appearance
         start_node_idx = self.forward_route_node_id_list.index(self.vehicle.current_node_id)
         src = self.vehicle.current_node_id
 
         for i in range(start_node_idx+1, len(self.forward_route_node_id_list)):
-            node_id = self.forward_route_node_id_list[i]
-            edge = self.vehicle.network.get_edge(src, node_id)
-            yield self.env.process(self.vehicle.pass_edge(edge=edge, pass_time=self.edge_travarse_time(edge=edge)))
-
+            # to board passenger from node
             yield self.env.process(self.vehicle.wait(time=STOP_STANDING_TIME))
-            if node_id in self.node_id_demand_dict:
+            if src in self.node_id_demand_dict:
                 stop = self.vehicle.network.get_node(src)
                 self.passenger_fill(stop)
                 self.passenger_drain(stop)
                 yield self.env.process(self.vehicle.wait(time=SHELTER_EVACUATION_TIME))
+
+            node_id = self.forward_route_node_id_list[i]
+            edge = self.vehicle.network.get_edge(src, node_id)
+            yield self.env.process(self.vehicle.pass_edge(edge=edge, pass_time=self.edge_travarse_time(edge=edge)))
             src = node_id
+
+        # to drain the passengers at the last node
+        yield self.env.process(self.vehicle.wait(time=STOP_STANDING_TIME))
+        stop = self.vehicle.network.get_node(src)
+        self.passenger_fill(stop)
+        self.passenger_drain(stop)
+        yield self.env.process(self.vehicle.wait(time=SHELTER_EVACUATION_TIME))
 
     def backward_pass(self):
         # first evaluate if backward pass needs refining
@@ -66,8 +76,9 @@ class TransitVehicleStrategy(VehicleStrategy):
         for node_no, node_id in enumerate(self.backward_route_node_id_list[1:]):
             if node_id in self.node_id_demand_dict and self.node_id_demand_dict[node_id] == 0:
                 break
-            elif node_id in self.node_id_demand_dict and self.node_id_demand_dict[node_id] == 0:
+            elif node_id in self.node_id_demand_dict and self.node_id_demand_dict[node_id] > 0:
                 refined_backward_route_node_id_list += node_id_list_inbetween_stops
+                refined_backward_route_node_id_list.append(node_id)
                 node_id_list_inbetween_stops = []
             else:
                 node_id_list_inbetween_stops.append(node_id)
@@ -80,8 +91,6 @@ class TransitVehicleStrategy(VehicleStrategy):
                 yield self.env.process(self.vehicle.pass_edge(edge=edge, pass_time=self.edge_travarse_time(edge=edge)))
 
                 src = node_id
-                if node_id in self.node_id_demand_dict and self.node_id_demand_dict[node_id] == 0:
-                    break
             self.vehicle.current_node_id = src
         else:
             self.signal_completion()
@@ -102,20 +111,32 @@ class TransitVehicleStrategy(VehicleStrategy):
     # TODO
     # transfer pass implementation
     def transfer_pass(self):
-        pass
+        newly_assigned_backward_route_node_id_list = \
+            self.vehicle.network.get_route(self.vehicle.route_id).route_node_list
+        src = newly_assigned_backward_route_node_id_list[0]
+        for node_no, node_id in enumerate(newly_assigned_backward_route_node_id_list[1:]):
+            # reverse is done assuming that reverse edge exist even if not mentioned
+            edge = self.vehicle.network.get_edge(node_id, src)
+            yield self.env.process(self.vehicle.pass_edge(edge=edge, pass_time=self.edge_travarse_time(edge=edge)))
+
+            src = node_id
+        self.vehicle.current_node_id = src
 
     def passenger_fill(self, stop: Node) -> int:
         demand_dict = self.vehicle.network.get_demand(stop.id)
         passenger_increase = 0
+
         for dest_id in demand_dict:
+            if dest_id not in self.forward_route_node_id_list:
+                continue
+            if self.vehicle.passenger_count >= self.vehicle.capacity:
+                break
             if demand_dict[dest_id] > 0:
                 boarded_count = self.vehicle.passenger_in_single_dest(dest_id=dest_id, count=demand_dict[dest_id])
                 stop.drain(route_id=self.vehicle.route_id, dest_id=dest_id, vehicle_id=self.vehicle.id,
                            count=boarded_count)
-                self.node_id_demand_dict[dest_id] -= boarded_count
                 passenger_increase += boarded_count
-                if self.vehicle.passenger_count >= self.vehicle.capacity:
-                    break
+                self.node_id_demand_dict[stop.id] -= boarded_count
         return passenger_increase
 
     def passenger_drain(self, stop: Node):

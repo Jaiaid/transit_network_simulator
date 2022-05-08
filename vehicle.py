@@ -52,9 +52,9 @@ class Vehicle:
         pass
 
     def wait(self, time: float):
-        Logger.log("route {0} vehicle {1} waiting start at {1}".format(self.route_id, self.id, self.env.now))
+        Logger.log("route {0} vehicle {1} waiting start at {2}".format(self.route_id, self.id, self.env.now))
         yield self.env.timeout(time)
-        Logger.log("vehicle {0} waiting finish at {1}".format(self.route_id, self.id, self.env.now))
+        Logger.log("route {0} vehicle {1} waiting finish at {2}".format(self.route_id, self.id, self.env.now))
 
     def assign_network(self, network: Network):
         self.network = network
@@ -112,9 +112,10 @@ class Vehicle:
             Logger.log("route {0} vehicle {1} trip_completion {2} at {3}".format(self.route_id, self.id,
                                                                                  self.trip_count, self.env.now))
 
-            self.dispatcher.update_route(vehicle=self)
-            self.strategy.transfer_pass()
-            Logger.log("route {0} vehicle {1} transfer_pass_completion at {2}".format(self.route_id, self.id,
+            self.repeat = self.dispatcher.update_route(vehicle=self)
+            if self.repeat:
+                self.strategy.transfer_pass()
+                Logger.log("route {0} vehicle {1} transfer_pass_completion at {2}".format(self.route_id, self.id,
                                                                                       self.env.now))
 
             # yield self.dispatcher_signal

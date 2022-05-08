@@ -1,6 +1,7 @@
 import simpy
 
 from fleet import Fleet
+from vehicle import Vehicle
 from network import Network
 from logger import Logger
 
@@ -13,13 +14,16 @@ class Dispatcher:
         self.vehicle_process_list: list[simpy.Process] = []
         self.life_signal = self.env.event()
         self.global_vehicle_signal = self.env.event()
-        self.dispatch_flag = [False] * len(fleet)
-        self.completion_flag = [False] * len(fleet)
+        self.dispatch_flag = [False] * fleet.size()
+        self.completion_flag = [False] * fleet.size()
         self.strategy = None
         self.vehicle_strategy = None
 
     def set_strategy(self, strategy_class: type.__class__):
         self.strategy = strategy_class(self, self.env)
+
+    def update_route(self, vehicle: Vehicle):
+        self.strategy.update_route(network=self.network, vehicle=vehicle)
 
     def start_dispatch(self, vehicle_strategy_class):
         # assign route to the vehicles
@@ -42,7 +46,6 @@ class Dispatcher:
         self.global_vehicle_signal.succeed()
         # self.dispatcher.global_vehicle_signal = env.event()
         while True:
-            self.strategy.observe()
             # WARNING: DONT REMOVE FOLLOWING LINE
             yield self.env.timeout(1)
 

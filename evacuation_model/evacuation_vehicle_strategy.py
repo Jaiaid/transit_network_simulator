@@ -46,7 +46,7 @@ class TransitVehicleStrategy(VehicleStrategy):
         for i in range(start_node_idx+1, len(self.forward_route_node_id_list)):
             node_id = self.forward_route_node_id_list[i]
             edge = self.vehicle.network.get_edge(src, node_id)
-            yield self.env.process(self.vehicle.enter(edge=edge, pass_time=self.edge_travarse_time(edge=edge)))
+            yield self.env.process(self.vehicle.pass_edge(edge=edge, pass_time=self.edge_travarse_time(edge=edge)))
 
             yield self.env.process(self.vehicle.wait(time=STOP_STANDING_TIME))
             if node_id in self.node_id_demand_dict:
@@ -77,7 +77,7 @@ class TransitVehicleStrategy(VehicleStrategy):
             for node_no, node_id in enumerate(refined_backward_route_node_id_list[1:]):
                 # reverse is done assuming that reverse edge exist even if not mentioned
                 edge = self.vehicle.network.get_edge(node_id, src)
-                yield self.env.process(self.vehicle.enter(edge=edge, pass_time=self.edge_travarse_time(edge=edge)))
+                yield self.env.process(self.vehicle.pass_edge(edge=edge, pass_time=self.edge_travarse_time(edge=edge)))
 
                 src = node_id
                 if node_id in self.node_id_demand_dict and self.node_id_demand_dict[node_id] == 0:
@@ -98,6 +98,11 @@ class TransitVehicleStrategy(VehicleStrategy):
         #
         #     src = node_id
         #     start_node_idx -= 1
+
+    # TODO
+    # transfer pass implementation
+    def transfer_pass(self):
+        pass
 
     def passenger_fill(self, stop: Node) -> int:
         demand_dict = self.vehicle.network.get_demand(stop.id)

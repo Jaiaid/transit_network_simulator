@@ -1,6 +1,5 @@
 import simpy
 
-import networkprimitive
 from network import Network
 from logger import Logger
 
@@ -31,7 +30,9 @@ class Vehicle:
         self.dispatcher = dispatcher
         self.strategy = strategy_class(self.env, self.dispatcher, self)
 
-    def enter(self, edge, pass_time: int):
+    def pass_edge(self, edge, pass_time: int):
+        # for container resource put and get needs to be done explicitly
+        # putting length amount in the container
         with edge.put(self.length) as req:
             yield req
             Logger.log(
@@ -39,6 +40,9 @@ class Vehicle:
                     self.route_id, self.id, edge.src_id, edge.dst_id, edge.length, self.env.now)
             )
             yield self.env.timeout(pass_time)
+        # get amount out before leaving
+        with edge.get(self.length) as req:
+            yield req
             Logger.log(
                 "route {0} vehicle {1} leaving edge {2},{3} of length {4} at {5}".format(
                     self.route_id, self.id, edge.src_id, edge.dst_id, edge.length, self.env.now)
@@ -96,15 +100,21 @@ class Vehicle:
             yield self.env.process(self.strategy.forward_pass())
             Logger.log("route {0} vehicle {1} forward_pass_completion at {2}".format(self.route_id, self.id,
                                                                                      self.env.now))
-            yield self.env.process(self.wait(5))
+            # yield self.env.process(self.wait(5))
             # do backward pass of trip
             yield self.env.process(self.strategy.backward_pass())
             Logger.log("route {0} vehicle {1} backward_pass_completion at {2}".format(self.route_id, self.id,
                                                                                       self.env.now))
-            yield self.env.process(self.wait(5))
+            # yield self.env.process(self.wait(5))
             # notify dispatcher about trip completion
             self.dispatcher.notify(self.id)
             self.trip_count += 1
             Logger.log("route {0} vehicle {1} trip_completion {2} at {3}".format(self.route_id, self.id,
                                                                                  self.trip_count, self.env.now))
-            yield self.dispatcher_signal
+
+            self.dispatcher.update_route(vehicle=self)
+            self.strategy.transfer_pass()
+            Logger.log("route {0} vehicle {1} transfer_pass_completion at {2}".format(self.route_id, self.id,
+                                                                                      self.env.now))
+
+            # yield self.dispatcher_signal

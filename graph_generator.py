@@ -16,6 +16,7 @@ REGEX_VEHICLE_EVENT_LINE_TYPE5 = r"^route (\d+) vehicle (\d+) ([a-z_]+) (\d+) pa
 REGEX_VEHICLE_EVENT_LINE_TYPE6 = r"^total vehicle (\d+) at (\d+\.?\d*)"
 
 VELOCITY_TIME_RESOLUTION_SEC = 600
+PASSENGER_TRANSFER_RESOLUTION_SEC = 600
 
 REGEX_WAITTIME = r"^Waiting time: (\d*\.\d+)"
 REGEX_EVACTIME = r"^Total Evacuation Time: (\d*\.\d+)"
@@ -39,6 +40,21 @@ class SpeedBin:
         if len(self.running_vehicle_id_dict.keys()) > 0:
             return self.total_travel_length / (len(self.running_vehicle_id_dict.keys()) * timestep)
         return 0
+
+
+class PopulationBin:
+    def __init__(self):
+        self.total_transfer = 0
+        self.running_vehicle_id_dict = {}
+
+    def add_transfer(self, vehicle_id: int, count: int):
+        self.total_transfer += count
+        if vehicle_id not in self.running_vehicle_id_dict:
+            self.running_vehicle_id_dict[vehicle_id] = 0
+        self.running_vehicle_id_dict[vehicle_id] += 1
+
+    def get_transfer(self) -> int:
+        return self.total_transfer
 
 
 class SpeedBinContainer:
@@ -102,15 +118,63 @@ class SpeedBinContainer:
         fig_avg_speed.savefig("average_velocity.png", dpi=300)
 
 
+class PopulationBinContainer:
+    def __init__(self, resolution):
+        self.resolution = resolution
+        self.population_bin_dict: dict[int, PopulationBin] = {}
+        self.vehicle_latest_entry_dict: dict[int, int] = {}
+
+    def set_time_step(self, transfer_bin_time_step_sec: int):
+        self.resolution = transfer_bin_time_step_sec
+
+    def passenger_reaching_data_entry(self, vehicle_id: int, count: int, leave_time: int):
+        leave_event_bin = (leave_time // self.resolution) * self.resolution
+        if leave_event_bin not in self.population_bin_dict:
+            self.population_bin_dict[leave_event_bin] = PopulationBin()
+        self.population_bin_dict[leave_event_bin].add_transfer(vehicle_id=vehicle_id, count=count)
+
+    def generate_graph(self):
+        fig_avg_speed, ax_avg_transfer_complete = plot.subplots()
+
+        x_coords = sorted(list(self.population_bin_dict.keys()))
+        presented_x_coords = []
+        y_coords = []
+        for x in x_coords:
+            if self.population_bin_dict[x].get_transfer() > 0:
+                y_coords.append(self.population_bin_dict[x].get_transfer())
+                presented_x_coords.append(int(x//3600))
+
+        ax_avg_transfer_complete.plot(presented_x_coords, y_coords)
+        ax_avg_transfer_complete.set_title("transfer completion in hour resolution".format(self.resolution))
+        ax_avg_transfer_complete.legend()
+        ax_avg_transfer_complete.set_xlabel("hour")
+        ax_avg_transfer_complete.set_ylabel("person")
+        # ax_avg_transfer_complete.set_xticks(list(range(0, max(presented_x_coords), self.resolution//3600)))
+        fig_avg_speed.savefig("hourly_transfer_completion_plot.png", dpi=300)
+
+        fig_avg_speed, ax_avg_transfer_complete = plot.subplots()
+
+        fig_avg_speed.savefig("transit_completion.png", dpi=300)
+        ax_avg_transfer_complete.bar([str(hr) for hr in presented_x_coords], y_coords, color='maroon', width=0.4)
+        ax_avg_transfer_complete.set_title("transfer completion per hour".format(self.resolution))
+        ax_avg_transfer_complete.legend()
+        ax_avg_transfer_complete.set_xlabel("hour")
+        ax_avg_transfer_complete.set_ylabel("person")
+        fig_avg_speed.savefig("hourly_transfer_completion_barplot.png", dpi=300)
+
+
 class GraphGenerator:
     def __init__(self):
         self.hourly_trip_completion_stat: dict[int, int] = {}
         self.hourly_trip_start_stat: dict[int, int] = {}
         self.hourly_speed_stat: dict[int, float] = {}
         self.speedbin_container = SpeedBinContainer(resolution=VELOCITY_TIME_RESOLUTION_SEC)
+        self.populationbin_container = PopulationBinContainer(resolution=PASSENGER_TRANSFER_RESOLUTION_SEC)
 
     def __analyze_event_log(self, avg_velocity_time_step_sec: int):
         self.speedbin_container.set_time_step(avg_velocity_time_step_sec=avg_velocity_time_step_sec)
+        # for now we are only generating per hour transfer completion bar plot
+        self.populationbin_container.set_time_step(transfer_bin_time_step_sec=3600)
 
         with open(DATA_FILE_NAME) as log_fin:
             for logline in log_fin.readlines():
@@ -158,7 +222,10 @@ class GraphGenerator:
                 elif event_type == "boarding":
                     pass
                 elif event_type == "offloading":
-                    pass
+                    count = int(result.groups()[3])
+                    timestamp = int(result.groups()[5])
+                    self.populationbin_container.passenger_reaching_data_entry(vehicle_id=vehicle_id, count=count,
+                                                                               leave_time=timestamp)
 
     def generate(self, avg_velocity_time_step_sec: int):
         self.__analyze_event_log(avg_velocity_time_step_sec=avg_velocity_time_step_sec)
@@ -184,3 +251,4 @@ class GraphGenerator:
         fig_trip_complete.savefig("hourly_trip_completion_barplot.png", dpi=300)
 
         self.speedbin_container.generate_graph()
+        self.populationbin_container.generate_graph()

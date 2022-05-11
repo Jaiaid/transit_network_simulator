@@ -95,21 +95,7 @@ class TransitVehicleStrategy(VehicleStrategy):
         else:
             self.signal_completion()
             self.vehicle.current_node_id = refined_backward_route_node_id_list[0]
-        # route = self.vehicle.network.get_route(self.vehicle.route_id)
-        # self.backward_route_node_id_list = list(reversed(route.route_node_list))
-        #
-        # src = self.backward_route_node_id_list[0]
-        # start_node_idx = len(self.forward_route_node_id_list) - 1
-        # for node_no, node_id in enumerate(self.backward_route_node_id_list[1:]):
-        #     # reverse is done assuming that reverse edge exist even if not mentioned
-        #     edge = self.vehicle.network.get_edge(node_id, src)
-        #     yield self.env.process(self.vehicle.enter(edge=edge, pass_time=self.edge_travarse_time(edge=edge)))
-        #
-        #     src = node_id
-        #     start_node_idx -= 1
 
-    # TODO
-    # transfer pass implementation
     def transfer_pass(self):
         newly_assigned_backward_route_node_id_list = \
             self.vehicle.network.get_route(self.vehicle.route_id).route_node_list

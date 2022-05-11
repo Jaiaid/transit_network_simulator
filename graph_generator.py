@@ -160,7 +160,7 @@ class PopulationBinContainer:
                     presented_x_coords.append(x)
 
             ax_avg_transfer_complete.plot(presented_x_coords, y_coords)
-            ax_avg_transfer_complete.set_title("transfer completion in hour resolution".format(self.resolution))
+            ax_avg_transfer_complete.set_title("transfer completion in {0}s resolution".format(self.resolution))
             ax_avg_transfer_complete.legend()
             ax_avg_transfer_complete.set_xlabel("seconds")
             ax_avg_transfer_complete.set_ylabel("person")

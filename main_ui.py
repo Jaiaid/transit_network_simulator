@@ -26,7 +26,7 @@ class Window(QMainWindow, Ui_MainWindow):
                 self.simulation_thread.simulator.load_dispatcher_strategy(
                     dispatcher_strategy_full_import_string=
                     self.dispatcher_strategy_filepath.text() + "." + class_name)
-            elif class_name == "VehicleStrategy":
+            elif class_name == "TransitVehicleStrategy":
                 self.simulation_thread.simulator.load_vehicle_strategy(
                     vehicle_strategy_full_import_string=
                     self.vehicle_strategy_filepath.text() + "." + class_name)
@@ -104,7 +104,7 @@ class Window(QMainWindow, Ui_MainWindow):
             if self.input_dir_path.text() is not None:
                 self.update_dir_content(self.input_dir_path.text())
 
-            self.__check_and_inform_pymodule_load_status(script_full_path=filepath, class_name="VehicleStrategy")
+            self.__check_and_inform_pymodule_load_status(script_full_path=filepath, class_name="TransitVehicleStrategy")
 
     def update_dir_content(self, content: str):
         self.directory_content.clear()
@@ -180,82 +180,89 @@ class SimulationThread(threading.Thread):
     def set_duration(self, duration: int):
         self.duration = duration
 
+    # TODO
+    # find the strategy class from module and load automatically
+    # currently class name is provided
     def run(self):
-        self.window_object.disable_ui(change_simulate_button=True)
-
         try:
-            simulation_progress_observer_thread = None
-            input_dir = self.window_object.input_dir_path.text()
-
-            nodecap_filepath = "{0}/stopcap.txt".format(input_dir)
-            edgecap_filepath = "{0}/edgecap.txt".format(input_dir)
-            network_filepath = "{0}/network.txt".format(input_dir)
-            demand_filepath = "{0}/demand.txt".format(input_dir)
-            fleet_filepath = "{0}/fleet.txt".format(input_dir)
-            route_filepath = "{0}/route.txt".format(input_dir)
-            routestop_filepath = None
-
-            if os.path.exists("{0}/route_stops.txt".format(input_dir)):
-                routestop_filepath = "{0}/route_stops.txt".format(input_dir)
+            self.window_object.disable_ui(change_simulate_button=True)
 
             try:
-                self.simulator.load_strategy(
+                input_dir = self.window_object.input_dir_path.text()
+
+                nodecap_filepath = "{0}/stopcap.txt".format(input_dir)
+                edgecap_filepath = "{0}/edgecap.txt".format(input_dir)
+                network_filepath = "{0}/network.txt".format(input_dir)
+                demand_filepath = "{0}/demand.txt".format(input_dir)
+                fleet_filepath = "{0}/fleet.txt".format(input_dir)
+                route_filepath = "{0}/route.txt".format(input_dir)
+                routestop_filepath = None
+
+                if os.path.exists("{0}/route_stops.txt".format(input_dir)):
+                    routestop_filepath = "{0}/route_stops.txt".format(input_dir)
+
+                try:
+                    self.simulator.load_strategy(
+                        dispatcher_strategy_full_import_string=
+                        self.window_object.dispatcher_strategy_filepath.text()+".DispatchStrategy",
+                        vehicle_strategy_full_import_string=
+                        self.window_object.vehicle_strategy_filepath.text()+".TransitVehicleStrategy")
+                except ModuleNotFoundError or AttributeError as e:
+                    self.window_object.update_message(
+                        "module not found error or attribute error in module loading: {0}, discontinuing simulation".
+                            format(e.__str__())
+                    )
+                    self.window_object.enable_ui(change_simulate_button=True)
+                    return
+                except Exception as e:
+                    self.window_object.update_message(
+                        "unknown exception in module loading: {0}, discontinuing simulation".format(e.__str__()))
+                    self.window_object.enable_ui(change_simulate_button=True)
+                    return
+
+                # provide datafile and prepare internal datastructure and environment
+                self.simulator.load_data(
+                    networkdata_filepath=network_filepath,
+                    demanddata_filepath=demand_filepath,
+                    routedata_filepath=route_filepath,
+                    fleetdata_filepath=fleet_filepath,
+                    edgedata_filepath=edgecap_filepath,
+                    stopdata_filepath=nodecap_filepath,
+                    perroutestopdata_filepath=routestop_filepath
+                )
+                # TODO
+                # solve crash due to (possibly) progress bar update thread
+                # maybe self.env is being read after/befpre simulation start?
+                # self.simulation_progress_observer_thread = SimulationProgressThread(
+                #     self.window_object, simulator=self.simulator, duration=self.duration)
+                # self.simulation_progress_observer_thread.start()
+
+                Logger.init()
+                self.simulator.simulate(
                     dispatcher_strategy_full_import_string=
                     self.window_object.dispatcher_strategy_filepath.text()+".DispatchStrategy",
                     vehicle_strategy_full_import_string=
-                    self.window_object.vehicle_strategy_filepath.text()+".VehicleStrategy")
-            except ModuleNotFoundError or AttributeError as e:
-                self.window_object.update_message(
-                    "module not found error or attribute error in module loading: {0}, discontinuing simulation".
-                        format(e.__str__())
+                    self.window_object.vehicle_strategy_filepath.text()+".TransitVehicleStrategy",
+                    time_length=self.duration
                 )
-                self.window_object.enable_ui(change_simulate_button=True)
-                return
-            except Exception as e:
+                Logger.close()
+
                 self.window_object.update_message(
-                    "unknown exception in module loading: {0}, discontinuing simulation".format(e.__str__()))
+                    "simulating data from {0} is done".format(input_dir))
+                self.window_object.update_message(
+                    "events saved in {0}/event_log.txt".format(os.path.abspath(os.path.curdir)))
+            except Exception as e:
+                self.window_object.update_message(e.__str__())
+            finally:
                 self.window_object.enable_ui(change_simulate_button=True)
-                return
-
-            # provide datafile and prepare internal datastructure and environment
-            self.simulator.load_data(
-                networkdata_filepath=network_filepath,
-                demanddata_filepath=demand_filepath,
-                routedata_filepath=route_filepath,
-                fleetdata_filepath=fleet_filepath,
-                edgedata_filepath=edgecap_filepath,
-                stopdata_filepath=nodecap_filepath,
-                perroutestopdata_filepath=routestop_filepath
-            )
-
-            self.simulation_progress_observer_thread = SimulationProgressThread(
-                self.window_object, simulator=self.simulator, duration=self.duration)
-            self.simulation_progress_observer_thread.start()
-
-            Logger.init()
-            self.simulator.simulate(
-                dispatcher_strategy_full_import_string=
-                self.window_object.dispatcher_strategy_filepath.text()+".DispatchStrategy",
-                vehicle_strategy_full_import_string=
-                self.window_object.vehicle_strategy_filepath.text()+".VehicleStrategy",
-                time_length=self.duration
-            )
-            Logger.close()
-
-            self.window_object.update_message(
-                "simulating data from {0} is done".format(input_dir))
-            self.window_object.update_message(
-                "events saved in {0}/event_log.txt".format(os.path.abspath(os.path.curdir)))
+                # if self.simulation_progress_observer_thread is not None:
+                #     self.simulation_progress_observer_thread.stop()
+                # wait for closing of progress observer thread
+                # while not self.simulation_progress_observer_thread.done:
+                #     time.sleep(0.01)
+                # self.window_object.simulation_progress_bar.setValue(100)
         except Exception as e:
-            self.window_object.update_message(e.__str__())
-        finally:
-            self.window_object.enable_ui(change_simulate_button=True)
-            if self.simulation_progress_observer_thread is not None:
-                self.simulation_progress_observer_thread.stop()
-            # wait for closing of progress observer thread
-            while self.simulation_progress_observer_thread.is_alive():
-                time.sleep(0.01)
-            self.window_object.simulation_progress_bar.setValue(100)
+            print(e)
 
     def stop(self):
         self.simulator.stop_simulation()
@@ -271,10 +278,14 @@ class SimulationProgressThread(threading.Thread):
         self.done = False
 
     def run(self):
-        while self.window_object.simulation_progress_bar.value() < 100 and not self.exit_flag:
-            self.window_object.simulation_progress_bar.setValue((self.simulator_object.get_time() * 100)//self.duration)
-            time.sleep(0.01)
-        self.done = True
+        try:
+            while self.window_object.simulation_progress_bar.value() < 100 and not self.exit_flag:
+                self.window_object.simulation_progress_bar.setValue(
+                    int((self.simulator_object.get_time() * 100)//self.duration))
+                time.sleep(0.01)
+            self.done = True
+        except Exception as e:
+            print(e)
 
     def stop(self):
         self.exit_flag = True

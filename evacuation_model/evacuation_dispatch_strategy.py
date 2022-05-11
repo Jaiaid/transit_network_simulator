@@ -5,6 +5,9 @@ from dispatcher import Dispatcher
 from network import Network
 from vehicle import Vehicle
 
+# 2 minute gap between each fleet
+FLEET_DEPARTURE_TIME_GAP_SEC = 120
+
 
 class DispatchStrategy:
     def __init__(self, dispatcher: Dispatcher, env: simpy.Environment):
@@ -23,6 +26,8 @@ class DispatchStrategy:
         return demand
 
     def assign_route(self, network: Network):
+        # to control departure time of fleet assigned in a route
+        route_id_to_latest_departure_time_dict = {}
         # assigning fleet proportionate to demand
         route_demand_dict = {}
         total_demand = 0
@@ -37,11 +42,24 @@ class DispatchStrategy:
             assigned_vehicle_count = int(route_demand_dict[route_id] * len(self.dispatcher.fleet.vehicle_dict)
                                          // total_demand)
             end_vehicle_id = start_vehicle_id + assigned_vehicle_count
+
+            if route_id not in route_id_to_latest_departure_time_dict:
+                route_id_to_latest_departure_time_dict[route_id] = 0
+
             for vehicle_id in range(start_vehicle_id, end_vehicle_id):
+                # set route id
                 self.dispatcher.fleet.vehicle_dict[vehicle_id].route_id =\
                     self.dispatcher.network.route_list[route_id].id
+                # set current position
                 self.dispatcher.fleet.vehicle_dict[vehicle_id].current_node_id =\
                     self.dispatcher.network.get_route(route_id=route_id).route_node_list[0]
+                # set departure time
+                self.dispatcher.fleet.vehicle_dict[vehicle_id].set_departure_time(
+                    departure_time=route_id_to_latest_departure_time_dict[route_id]
+                )
+
+                # increase the latest departure time for next vehicle
+                route_id_to_latest_departure_time_dict[route_id] += FLEET_DEPARTURE_TIME_GAP_SEC
             start_vehicle_id = end_vehicle_id
             total_assigned += assigned_vehicle_count
 
@@ -49,9 +67,18 @@ class DispatchStrategy:
             # assign remaining vehicles in roundrobin fashion
             route_id = 0
             for vehicle_id in range(total_assigned, self.dispatcher.fleet.size()):
+                # set route id
                 self.dispatcher.fleet.vehicle_dict[vehicle_id].route_id = route_id
+                # set current position
                 self.dispatcher.fleet.vehicle_dict[vehicle_id].current_node_id = \
                     self.dispatcher.network.get_route(route_id=route_id).route_node_list[0]
+                # set departure time
+                self.dispatcher.fleet.vehicle_dict[vehicle_id].set_departure_time(
+                    departure_time=route_id_to_latest_departure_time_dict[route_id]
+                )
+                # increase the latest departure time for next vehicle
+                route_id_to_latest_departure_time_dict[route_id] += FLEET_DEPARTURE_TIME_GAP_SEC
+
                 route_id += 1
                 route_id %= len(self.dispatcher.network.route_list)
 

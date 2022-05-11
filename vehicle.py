@@ -89,7 +89,7 @@ class Vehicle:
     def process(self):
         yield self.dispatcher.global_vehicle_signal
 
-        self.env.timeout(delay=self.departure_time)
+        yield self.env.timeout(delay=self.departure_time)
         while self.repeat:
             # first plan trip
             self.strategy.plan_trip()

@@ -159,8 +159,6 @@ class PopulationBinContainer:
                     y_coords.append(self.population_bin_dict[x].get_transfer())
                     presented_x_coords.append(x)
 
-            print(presented_x_coords, x_coords, y_coords)
-
             ax_avg_transfer_complete.plot(presented_x_coords, y_coords)
             ax_avg_transfer_complete.set_title("transfer completion in hour resolution".format(self.resolution))
             ax_avg_transfer_complete.legend()

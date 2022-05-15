@@ -23,8 +23,8 @@ class TransitVehicleStrategy(VehicleStrategy):
     def __id_first_occurance_idx(id_list: list[int], element: int) -> int:
         return id_list.index(element)
 
-    def edge_travarse_time(self, edge: Edge) -> int:
-        return int(edge.length / self.vehicle.speed)
+    def edge_travarse_time(self, edge: Edge) -> float:
+        return edge.length / self.vehicle.speed
 
     def plan_trip(self):
         route = self.vehicle.network.get_route(self.vehicle.route_id)
@@ -58,6 +58,8 @@ class TransitVehicleStrategy(VehicleStrategy):
             edge = self.vehicle.network.get_edge(src, node_id)
             yield self.env.process(self.vehicle.pass_edge(edge=edge, pass_time=self.edge_travarse_time(edge=edge)))
             src = node_id
+            # vehicle now in different node
+            self.vehicle.current_node_id = src
 
         # to drain the passengers at the last node
         yield self.env.process(self.vehicle.wait(time=STOP_STANDING_TIME))
@@ -73,6 +75,7 @@ class TransitVehicleStrategy(VehicleStrategy):
         # think like bubble sort
         refined_backward_route_node_id_list = [self.backward_route_node_id_list[0]]
         node_id_list_inbetween_stops = []
+
         for node_no, node_id in enumerate(self.backward_route_node_id_list[1:]):
             if node_id in self.node_id_demand_dict and self.node_id_demand_dict[node_id] == 0:
                 break
@@ -91,6 +94,7 @@ class TransitVehicleStrategy(VehicleStrategy):
                 yield self.env.process(self.vehicle.pass_edge(edge=edge, pass_time=self.edge_travarse_time(edge=edge)))
 
                 src = node_id
+            # vehicle now in different node
             self.vehicle.current_node_id = src
         else:
             self.signal_completion()
@@ -98,7 +102,8 @@ class TransitVehicleStrategy(VehicleStrategy):
 
     def transfer_pass(self):
         newly_assigned_backward_route_node_id_list = \
-            self.vehicle.network.get_route(self.vehicle.route_id).route_node_list
+            list(reversed(self.vehicle.network.get_route(self.vehicle.route_id).route_node_list))
+
         src = newly_assigned_backward_route_node_id_list[0]
         for node_no, node_id in enumerate(newly_assigned_backward_route_node_id_list[1:]):
             # reverse is done assuming that reverse edge exist even if not mentioned
@@ -113,7 +118,8 @@ class TransitVehicleStrategy(VehicleStrategy):
         passenger_increase = 0
 
         for dest_id in demand_dict:
-            if dest_id not in self.forward_route_node_id_list:
+            # in evacuation model we are only serving demand to shelter which is at the end of the route
+            if dest_id != self.forward_route_node_id_list[-1]:
                 continue
             if self.vehicle.passenger_count >= self.vehicle.capacity:
                 break
@@ -123,6 +129,7 @@ class TransitVehicleStrategy(VehicleStrategy):
                            count=boarded_count)
                 passenger_increase += boarded_count
                 self.node_id_demand_dict[stop.id] -= boarded_count
+
         return passenger_increase
 
     def passenger_drain(self, stop: Node):

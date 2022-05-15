@@ -22,8 +22,8 @@ class Dispatcher:
     def set_strategy(self, strategy_class: type.__class__):
         self.strategy = strategy_class(self, self.env)
 
-    def update_route(self, vehicle: Vehicle):
-        self.strategy.update_route(network=self.network, vehicle=vehicle)
+    def update_route(self, vehicle: Vehicle) -> bool:
+        return self.strategy.update_route(network=self.network, vehicle=vehicle)
 
     def start_dispatch(self, vehicle_strategy_class):
         # assign route to the vehicles

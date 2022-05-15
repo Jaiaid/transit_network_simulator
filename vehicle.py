@@ -30,7 +30,7 @@ class Vehicle:
         self.dispatcher = dispatcher
         self.strategy = strategy_class(self.env, self.dispatcher, self)
 
-    def pass_edge(self, edge, pass_time: int):
+    def pass_edge(self, edge, pass_time: float):
         # for container resource put and get needs to be done explicitly
         # putting length amount in the container
         with edge.put(self.length) as req:
@@ -63,9 +63,7 @@ class Vehicle:
         for stop_id in dest_id_passenger_dict:
             self.passenger_count += dest_id_passenger_dict[stop_id]
             if stop_id in self.dest_id_passenger_dict:
-                self.dest_id_passenger_dict[stop_id] += dest_id_passenger_dict[stop_id]
-            else:
-                self.dest_id_passenger_dict[stop_id] = dest_id_passenger_dict[stop_id]
+                self.passenger_in_single_dest(dest_id=stop_id, count=dest_id_passenger_dict[stop_id])
 
     def passenger_in_single_dest(self, dest_id: int, count: int) -> int:
         if dest_id not in self.dest_id_passenger_dict:
@@ -75,6 +73,7 @@ class Vehicle:
         else:
             remaining = 0
         self.dest_id_passenger_dict[dest_id] += count - remaining
+        self.passenger_count += count - remaining
         return count - remaining
 
     def passenger_out(self, stop_id: int):

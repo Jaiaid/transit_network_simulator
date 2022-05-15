@@ -13,15 +13,20 @@ class DispatchStrategy:
     def __init__(self, dispatcher: Dispatcher, env: simpy.Environment):
         self.dispatcher: Dispatcher = dispatcher
         self.env = env
+        self.route_demand_dict = {}
 
     def __calculate_demand(self, network: Network, route_id: int) -> int:
         route = network.get_route(route_id)
-
+        # TODO
+        # a node may be part of multiple route
+        # current demand calculation consider full demand while adding,
+        # this creates overestimation when we try to use it for all route to calculate total demand
         demand = 0
         for node_id in route.route_node_list:
             demand_dict = network.get_demand(node_id=node_id)
             for dest_id in demand_dict:
-                demand += demand_dict[dest_id]
+                if dest_id in route.route_node_list:
+                    demand += demand_dict[dest_id]
 
         return demand
 
@@ -29,17 +34,17 @@ class DispatchStrategy:
         # to control departure time of fleet assigned in a route
         route_id_to_latest_departure_time_dict = {}
         # assigning fleet proportionate to demand
-        route_demand_dict = {}
+        self.route_demand_dict = {}
         total_demand = 0
         for route_id, route in enumerate(network.route_list):
-            route_demand_dict[route_id] = self.__calculate_demand(network, route_id)
-            total_demand += route_demand_dict[route_id]
+            self.route_demand_dict[route_id] = self.__calculate_demand(network, route_id)
+            total_demand += self.route_demand_dict[route_id]
 
         # assign route to the vehicle
         start_vehicle_id = 0
         total_assigned = 0
-        for route_id in route_demand_dict:
-            assigned_vehicle_count = int(route_demand_dict[route_id] * len(self.dispatcher.fleet.vehicle_dict)
+        for route_id in self.route_demand_dict:
+            assigned_vehicle_count = int(self.route_demand_dict[route_id] * len(self.dispatcher.fleet.vehicle_dict)
                                          // total_demand)
             end_vehicle_id = start_vehicle_id + assigned_vehicle_count
 
@@ -84,10 +89,9 @@ class DispatchStrategy:
 
     def update_route(self, network: Network, vehicle: Vehicle) -> bool:
         # calculate remaining demand
-        route_demand_dict = {}
-        for route_id, route in enumerate(network.route_list):
-            route_demand_dict[route_id] = self.__calculate_demand(network, route_id)
-
+        self.route_demand_dict[vehicle.route_id] = self.__calculate_demand(network, vehicle.route_id)
+        if self.route_demand_dict[vehicle.route_id] > 0:
+            return True
         # TODO:
         # implement a proper mechanism to detect all route demand is staisfied
         attempt_count = 0
@@ -95,7 +99,8 @@ class DispatchStrategy:
             random_route = random.choice(network.route_list)
             # assign the new route if it has some passengers to serve and
             # currently vehicle is at the last node of this route
-            if route_demand_dict[random_route.id] > 0 and random_route.route_node_list[-1] == vehicle.current_node_id:
+            if self.route_demand_dict[random_route.id] > 0 and \
+                    random_route.route_node_list[-1] == vehicle.current_node_id:
                 vehicle.route_id = random_route.id
                 return True
             attempt_count += 1

@@ -22,6 +22,9 @@ class Node(simpy.Resource):
         self.env = env
         super().__init__(env, capacity)
 
+    def get_demand_dict(self) -> dict[int, int]:
+        return self.dest_id_passenger_dict
+
     def drain(self, route_id: int, vehicle_id: int, dest_id: int, count: int) -> int:
         if dest_id in self.dest_id_passenger_dict:
             boarding = min(count, self.dest_id_passenger_dict[dest_id])
@@ -31,7 +34,7 @@ class Node(simpy.Resource):
             )
             self.dest_id_passenger_dict[dest_id] -= boarding
 
-            return 0
+        return 0
 
     def fill(self, dest_id_passenger_inc_dict: dict[int, int]):
         pass

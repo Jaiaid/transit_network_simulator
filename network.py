@@ -67,7 +67,7 @@ class Network:
         return self.node_list[node_id]
 
     def get_demand(self, node_id: int) -> dict[int, int]:
-        return self.node_data.get_demand_dict(node_id=node_id)
+        return self.node_list[node_id].get_demand_dict()
 
     def load_route_data(self, network_route_filepath: str):
         with open(network_route_filepath) as fin:
@@ -90,7 +90,7 @@ class Network:
                 dst_id = 0
 
                 self.node_list.append(Node(node_id=src_id, env=self.env, capacity=self.node_data.get_cap(src_id),
-                                            dest_id_passenger_dict=self.node_data.get_demand_dict(src_id)))
+                                           dest_id_passenger_dict=self.node_data.get_demand_dict(src_id)))
 
                 for token in line.split():
                     if float(token) != INF_CAP:

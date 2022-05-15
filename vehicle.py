@@ -36,7 +36,7 @@ class Vehicle:
         with edge.put(self.length) as req:
             yield req
             Logger.log(
-                "route {0} vehicle {1} entering edge {2},{3} of length {4} at {5}".format(
+                "route {0} vehicle {1} entering edge {2},{3} of length {4} at {5:.0f}".format(
                     self.route_id, self.id, edge.src_id, edge.dst_id, edge.length, self.env.now)
             )
             yield self.env.timeout(pass_time)
@@ -44,7 +44,7 @@ class Vehicle:
         with edge.get(self.length) as req:
             yield req
             Logger.log(
-                "route {0} vehicle {1} leaving edge {2},{3} of length {4} at {5}".format(
+                "route {0} vehicle {1} leaving edge {2},{3} of length {4} at {5:.0f}".format(
                     self.route_id, self.id, edge.src_id, edge.dst_id, edge.length, self.env.now)
             )
 
@@ -52,9 +52,9 @@ class Vehicle:
         pass
 
     def wait(self, time: float):
-        Logger.log("route {0} vehicle {1} waiting start at {2}".format(self.route_id, self.id, self.env.now))
+        Logger.log("route {0} vehicle {1} waiting start at {2:.0f}".format(self.route_id, self.id, self.env.now))
         yield self.env.timeout(time)
-        Logger.log("route {0} vehicle {1} waiting finish at {2}".format(self.route_id, self.id, self.env.now))
+        Logger.log("route {0} vehicle {1} waiting finish at {2:.0f}".format(self.route_id, self.id, self.env.now))
 
     def assign_network(self, network: Network):
         self.network = network
@@ -80,7 +80,7 @@ class Vehicle:
         if stop_id in self.dest_id_passenger_dict:
             self.passenger_count -= self.dest_id_passenger_dict[stop_id]
             Logger.log(
-                "route {0} vehicle {1} offloading {2} passenger for {3} at {4}".format(
+                "route {0} vehicle {1} offloading {2} passenger for {3} at {4:.0f}".format(
                     self.route_id, self.id, self.dest_id_passenger_dict[stop_id], stop_id, self.env.now)
             )
             self.dest_id_passenger_dict[stop_id] = 0
@@ -93,28 +93,28 @@ class Vehicle:
             # first plan trip
             self.strategy.plan_trip()
             Logger.log(
-                "route {0} vehicle {1} trip_start {2} at {3}".format(self.route_id, self.id, self.trip_count,
+                "route {0} vehicle {1} trip_start {2} at {3:.0f}".format(self.route_id, self.id, self.trip_count,
                                                                      self.env.now))
             # do forward pass of trip
             yield self.env.process(self.strategy.forward_pass())
-            Logger.log("route {0} vehicle {1} forward_pass_completion at {2}".format(self.route_id, self.id,
+            Logger.log("route {0} vehicle {1} forward_pass_completion at {2:.0f}".format(self.route_id, self.id,
                                                                                      self.env.now))
             # yield self.env.process(self.wait(5))
             # do backward pass of trip
             yield self.env.process(self.strategy.backward_pass())
-            Logger.log("route {0} vehicle {1} backward_pass_completion at {2}".format(self.route_id, self.id,
+            Logger.log("route {0} vehicle {1} backward_pass_completion at {2:.0f}".format(self.route_id, self.id,
                                                                                       self.env.now))
             # yield self.env.process(self.wait(5))
             # notify dispatcher about trip completion
             self.dispatcher.notify(self.id)
             self.trip_count += 1
-            Logger.log("route {0} vehicle {1} trip_completion {2} at {3}".format(self.route_id, self.id,
+            Logger.log("route {0} vehicle {1} trip_completion {2} at {3:.0f}".format(self.route_id, self.id,
                                                                                  self.trip_count, self.env.now))
 
             self.repeat = self.dispatcher.update_route(vehicle=self)
             if self.repeat:
-                self.strategy.transfer_pass()
-                Logger.log("route {0} vehicle {1} transfer_pass_completion at {2}".format(self.route_id, self.id,
+                yield self.env.process(self.strategy.transfer_pass())
+                Logger.log("route {0} vehicle {1} transfer_pass_completion at {2:.0f}".format(self.route_id, self.id,
                                                                                       self.env.now))
 
             # yield self.dispatcher_signal

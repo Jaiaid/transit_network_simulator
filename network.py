@@ -43,10 +43,8 @@ class NetworkNodeData:
                 dst_id = 0
                 self.demand_dict_list.append({})
                 for token in line.split():
-                    if int(token) != INF_CAP:
-                        self.demand_dict_list[src_id][dst_id] = int(token)
+                    self.demand_dict_list[src_id][dst_id] = int(token)
                     dst_id += 1
-
                 src_id += 1
 
 

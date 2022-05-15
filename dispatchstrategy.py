@@ -4,6 +4,7 @@ from dispatcher import Dispatcher
 from network import Network
 from vehicle import Vehicle
 
+
 class DispatchStrategy:
     def __init__(self, dispatcher: Dispatcher, env: simpy.Environment):
         self.dispatcher: Dispatcher = dispatcher

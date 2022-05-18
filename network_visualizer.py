@@ -1,8 +1,12 @@
+import math
 import time
+
 import simpy
 import re
 import argparse
-from pyvis.network import Network as NetworkDrawingObject
+import networkx as nx
+import matplotlib.pyplot as plt
+import matplotlib.animation as anime
 
 from network import Network
 from fleet import Fleet
@@ -18,6 +22,11 @@ REGEX_VEHICLE_EVENT_LINE_TYPE5 = r"^route (\d+) vehicle (\d+) ([a-z_]+) (\d+) pa
 
 DEFAULT_TIME_STEP = 600
 
+# holder of network visualizer
+# global object created to use in callback
+network_visualizer = None
+# global time step holder
+time_step = DEFAULT_TIME_STEP
 
 class EdgeVehicleBin:
     def __init__(self):
@@ -94,10 +103,17 @@ class NetworkVisualizer:
     def __init__(self, network: Network, fleet: Fleet):
         self.network: Network = network
         self.fleet: Fleet = fleet
-        self.drawn_network = NetworkDrawingObject()
+
         self.added_edge_count = 0
         self.edge_tuple_to_id_dict = {}
         self.edge_count_container = EdgeVehicleBinContainer(resolution=DEFAULT_TIME_STEP)
+
+        self.drawn_network = nx.DiGraph()
+        self.network_layout = None
+        self.fig, self.ax = plt.subplots()
+        self.animation_object = None
+        # stored rather than generate each time graph is redrawn
+        self.edgekey_list = []
 
     def set_time_setp(self, timestep_sec):
         self.edge_count_container.set_time_step(timestep_sec=timestep_sec)
@@ -153,32 +169,67 @@ class NetworkVisualizer:
                     )
 
     def draw_network_view(self):
-        # first draw the nodes
-        node_id_list = [node.id for node in self.network.node_list]
-        node_label_list = [str(node.id) for node in self.network.node_list]
-        self.drawn_network.add_nodes(nodes=node_id_list, label = node_label_list)
-        # then add edges
+        # add edges, node will be added from the edge key list
+        self.edgekey_list = []
         for edge_src_dst_tuple, edge in self.network.edge_dict.items():
-            self.drawn_network.add_edge(source=edge_src_dst_tuple[0], to=edge_src_dst_tuple[1], value=1)
-        # property set
-        self.drawn_network.repulsion(damping=100)
-        # self.drawn_network.toggle_physics(status=False)
-        # then show
-        self.drawn_network.show("transit_network.html")
+            # avoid self loop
+            if edge_src_dst_tuple[0] != edge_src_dst_tuple[1]:
+                self.edgekey_list.append(edge_src_dst_tuple)
+            # self.drawn_network.add_edge(source=edge_src_dst_tuple[0], to=edge_src_dst_tuple[1], value=1)
+        # add edges
+        self.drawn_network.add_edges_from(self.edgekey_list)
+        # set the layout
+        self.network_layout = nx.spring_layout(self.drawn_network)
+
+        # value for nodes
+        val_map = {'A': 1.0,
+                   'D': 0.5714285714285714,
+                   'H': 0.0}
+        values = [val_map.get(node, 0.25) for node in self.drawn_network.nodes()]
+
+        # draw nodes
+        nx.draw_networkx_nodes(self.drawn_network, self.network_layout, ax=self.ax, cmap=plt.get_cmap('jet'),
+                               node_color=values, node_size=100)
+        # draw label
+        nx.draw_networkx_labels(self.drawn_network, self.network_layout, ax=self.ax, font_size=5)
+        # draw edges, all edges are green color at first
+        nx.draw_networkx_edges(self.drawn_network, self.network_layout, ax=self.ax, edgelist=self.edgekey_list,
+                               edge_color=(0, 1, 0), arrows=False)
 
     def update_network_view(self, update_timebin: int):
+        print("current time : {0}".format(update_timebin), end="\r")
+        # 50ms sleep, otherwise too fast update
+        time.sleep(0.05)
+        self.ax.clear()
         # first get holding data for the timebin
         holding_data = self.edge_count_container.get_edge_holding(timestamp_sec=update_timebin)
         # update the edges
+        edge_color_list = []
         for edge_src_dst_tuple, edge in self.network.edge_dict.items():
             holding = holding_data.get_holding(edge_id=self.edge_tuple_to_id_dict[edge_src_dst_tuple])
             capacity = self.network.edge_cap_data.get_cap(src_id=edge_src_dst_tuple[0], dst_id=edge_src_dst_tuple[1])
-
+            # TODO
+            # do something about self edges and capacity zero edges
             if capacity == 0:
-                self.drawn_network.add_edge(source=edge_src_dst_tuple[0], to=edge_src_dst_tuple[1], value=0)
+                edge_color_list.append((1.0, 1.0, 1.0))
             else:
-                self.drawn_network.add_edge(
-                    source=edge_src_dst_tuple[0], to=edge_src_dst_tuple[1], value=holding/capacity)
+                edge_color_list.append((holding/capacity, 1-holding/capacity, 0))
+
+        # add the edges
+        self.drawn_network.add_edges_from(self.edgekey_list)
+        # value for nodes
+        val_map = {'A': 1.0,
+                   'D': 0.5714285714285714,
+                   'H': 0.0}
+        values = [val_map.get(node, 0.25) for node in self.drawn_network.nodes()]
+        # draw nodes
+        nx.draw_networkx_nodes(self.drawn_network, self.network_layout, ax=self.ax, cmap=plt.get_cmap('jet'),
+                               node_color=values, node_size=100)
+        # draw label
+        nx.draw_networkx_labels(self.drawn_network, self.network_layout, ax=self.ax, font_size=5)
+        # draw edges, all edges are green color at first
+        nx.draw_networkx_edges(self.drawn_network, self.network_layout, ax=self.ax, edgelist=self.edgekey_list,
+                               edge_color=edge_color_list, arrows=False)
 
     def render_network(self, timestep_sec: int, duration: int):
         self.__init_internal()
@@ -186,9 +237,18 @@ class NetworkVisualizer:
 
         # first draw
         self.draw_network_view()
-        for timebin in range(0, duration, timestep_sec):
-            time.sleep(0.01)
-            self.update_network_view(update_timebin=timebin)
+        # initialize animation object
+        # the object is stored to avoid garbage collection of it (according to method doc)
+        # number of frame calculated from duration of visualization and timestep used in each frame
+        self.animation_object = anime.FuncAnimation(self.fig, animate,
+                                                    frames=math.ceil(duration/timestep_sec), repeat=False)
+        # now show
+        plt.show()
+
+
+def animate(frame_no: int):
+    global network_visualizer, time_step
+    network_visualizer.update_network_view(update_timebin=frame_no*time_step)
 
 
 if __name__=="__main__":
@@ -220,4 +280,5 @@ if __name__=="__main__":
     fleet.load_data(filepath=fleet_filepath)
 
     network_visualizer = NetworkVisualizer(network=network, fleet=fleet)
+    time_step = args.time_step
     network_visualizer.render_network(timestep_sec=args.time_step, duration=args.duration)

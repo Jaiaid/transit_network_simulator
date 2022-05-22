@@ -48,7 +48,7 @@ class VehicleStrategy:
             src = node_id
 
     def transfer_pass(self):
-        pass
+        yield self.env.timeout(2)
 
     def passenger_fill(self, stop: Node) -> int:
         demand_dict = self.vehicle.network.get_demand(stop.id)

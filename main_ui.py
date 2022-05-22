@@ -129,7 +129,7 @@ class Window(QMainWindow, Ui_MainWindow):
             self.simulate_button.setText("simulate")
         else:
             try:
-                self.simulation_progress_bar.setValue(0)
+                self.simulation_progress_bar.reset()
                 self.simulation_thread = SimulationThread(window_object=self,
                                                           duration=self.simulation_duration_slider.value())
                 self.simulation_thread.start()
@@ -232,10 +232,9 @@ class SimulationThread(threading.Thread):
                 )
                 # TODO
                 # solve crash due to (possibly) progress bar update thread
-                # maybe self.env is being read after/befpre simulation start?
-                # self.simulation_progress_observer_thread = SimulationProgressThread(
-                #     self.window_object, simulator=self.simulator, duration=self.duration)
-                # self.simulation_progress_observer_thread.start()
+                self.simulation_progress_observer_thread = SimulationProgressThread(
+                    self.window_object, simulator=self.simulator, duration=self.duration)
+                self.simulation_progress_observer_thread.start()
 
                 Logger.init()
                 self.simulator.simulate(
@@ -251,16 +250,12 @@ class SimulationThread(threading.Thread):
                     "simulating data from {0} is done".format(input_dir))
                 self.window_object.update_message(
                     "events saved in {0}/event_log.txt".format(os.path.abspath(os.path.curdir)))
+                # wait for progress bar thread exit
+                self.simulation_progress_observer_thread.join()
             except Exception as e:
                 self.window_object.update_message(e.__str__())
             finally:
                 self.window_object.enable_ui(change_simulate_button=True)
-                # if self.simulation_progress_observer_thread is not None:
-                #     self.simulation_progress_observer_thread.stop()
-                # wait for closing of progress observer thread
-                # while not self.simulation_progress_observer_thread.done:
-                #     time.sleep(0.01)
-                # self.window_object.simulation_progress_bar.setValue(100)
         except Exception as e:
             print(e)
 
@@ -282,7 +277,8 @@ class SimulationProgressThread(threading.Thread):
             while self.window_object.simulation_progress_bar.value() < 100 and not self.exit_flag:
                 self.window_object.simulation_progress_bar.setValue(
                     int((self.simulator_object.get_time() * 100)//self.duration))
-                time.sleep(0.01)
+                # removing sleep reduce crash frequency
+                # time.sleep(0.01)
             self.done = True
         except Exception as e:
             print(e)

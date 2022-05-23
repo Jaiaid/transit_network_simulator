@@ -1,6 +1,6 @@
 import math
 import time
-
+import os
 import simpy
 import re
 import argparse
@@ -27,6 +27,7 @@ DEFAULT_TIME_STEP = 600
 network_visualizer = None
 # global time step holder
 time_step = DEFAULT_TIME_STEP
+
 
 class EdgeVehicleBin:
     def __init__(self):
@@ -169,6 +170,7 @@ class NetworkVisualizer:
                     )
 
     def draw_network_view(self):
+        self.fig.set_tight_layout(True)
         # add edges, node will be added from the edge key list
         self.edgekey_list = []
         for edge_src_dst_tuple, edge in self.network.edge_dict.items():
@@ -242,7 +244,9 @@ class NetworkVisualizer:
         # number of frame calculated from duration of visualization and timestep used in each frame
         self.animation_object = anime.FuncAnimation(self.fig, animate,
                                                     frames=math.ceil(duration/timestep_sec), repeat=False)
+
         # now show
+        plt.get_current_fig_manager().window.showMaximized()
         plt.show()
 
 

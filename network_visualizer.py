@@ -1,6 +1,8 @@
 import math
 import time
-import os
+# unnecessary import to avoid pyinstaller exe error
+# numpy' has no attribute '_NoValue
+import numpy as np
 import simpy
 import re
 import argparse
@@ -126,10 +128,10 @@ class NetworkVisualizer:
                 self.edge_tuple_to_id_dict[edge_src_dst_tuple] = self.added_edge_count
                 self.added_edge_count += 1
 
-    def __analyze_event_log(self, timestep_sec: int):
+    def __analyze_event_log(self, event_log_filepath: str, timestep_sec: int):
         self.set_time_setp(timestep_sec=timestep_sec)
 
-        with open(DATA_FILE_NAME) as log_fin:
+        with open(event_log_filepath) as log_fin:
             for logline in log_fin.readlines():
                 logline = logline.split('\n')[0]
 
@@ -233,9 +235,9 @@ class NetworkVisualizer:
         nx.draw_networkx_edges(self.drawn_network, self.network_layout, ax=self.ax, edgelist=self.edgekey_list,
                                edge_color=edge_color_list, arrows=False)
 
-    def render_network(self, timestep_sec: int, duration: int):
+    def render_network(self, event_log_file_path: str, timestep_sec: int, duration: int):
         self.__init_internal()
-        self.__analyze_event_log(timestep_sec=timestep_sec)
+        self.__analyze_event_log(event_log_filepath=event_log_file_path, timestep_sec=timestep_sec)
 
         # first draw
         self.draw_network_view()
@@ -285,4 +287,5 @@ if __name__=="__main__":
 
     network_visualizer = NetworkVisualizer(network=network, fleet=fleet)
     time_step = args.time_step
-    network_visualizer.render_network(timestep_sec=args.time_step, duration=args.duration)
+    network_visualizer.render_network(event_log_file_path=args.event_log,
+                                      timestep_sec=args.time_step, duration=args.duration)

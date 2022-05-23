@@ -1,8 +1,5 @@
 import re
 import matplotlib.pyplot as plot
-import copy
-
-from network import Network
 
 DATA_FILE_NAME = "event_log.txt"
 

@@ -17,7 +17,7 @@ class Window(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
-        self.simulation_thread = SimulationThread(window_object=self, duration=self.simulation_duration_slider.value())
+        self.simulation_thread = None
         self.analysis_thread = None
 
     def __check_and_inform_pymodule_load_status(self, script_full_path: str, class_name: str) -> bool:
@@ -145,6 +145,9 @@ class Window(QMainWindow, Ui_MainWindow):
         except Exception as e:
             print(e)
 
+    def update_progress_bar(self, value: int):
+        self.simulation_progress_bar.setValue(value)
+
 
 class AnalysisThread(threading.Thread):
     def __init__(self, window_object: Window, time_step: int):
@@ -232,6 +235,12 @@ class SimulationThread(threading.Thread):
                 )
                 # TODO
                 # solve crash due to (possibly) progress bar update thread
+                # crash is solved by using signal and slot to avoid updating progress bar from another thread
+                # signal is created and corresponding slot is implemented in Window class
+                # from another thread signal is emitted to make sure update (slot execution) is done in main thread
+                # https://wiki.qt.io/Qt_for_Python_Signals_and_Slots
+                # https://stackoverflow.com/questions/71875808/how-to-update-value-in-progressbar-in-another-thread-in-qt-c
+                # other widget update will be switched to signaling
                 self.simulation_progress_observer_thread = SimulationProgressThread(
                     self.window_object, simulator=self.simulator, duration=self.duration)
                 self.simulation_progress_observer_thread.start()
@@ -275,10 +284,10 @@ class SimulationProgressThread(threading.Thread):
     def run(self):
         try:
             while self.window_object.simulation_progress_bar.value() < 100 and not self.exit_flag:
-                self.window_object.simulation_progress_bar.setValue(
+                self.window_object.simulation_progress_bar.valueChanged.emit(
                     int((self.simulator_object.get_time() * 100)//self.duration))
                 # removing sleep reduce crash frequency
-                # time.sleep(0.01)
+                time.sleep(0.01)
             self.done = True
         except Exception as e:
             print(e)

@@ -122,6 +122,7 @@ class Ui_MainWindow(object):
         self.analyze_button.clicked.connect(MainWindow.start_analysis)
         self.dispatcher_strategy_browse_button.clicked.connect(MainWindow.select_dispatcher_strategy_path)
         self.vehicle_strategy_browse_button.clicked.connect(MainWindow.select_vehicle_strategy_path)
+        self.simulation_progress_bar.valueChanged['int'].connect(MainWindow.update_progress_bar)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):

@@ -366,6 +366,22 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>simulation_progress_bar</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>update_progress_bar(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>396</x>
+     <y>611</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>467</x>
+     <y>625</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>simulation_duration_update(int)</slot>
@@ -376,5 +392,6 @@
   <slot>start_analysis()</slot>
   <slot>select_dispatcher_strategy_path()</slot>
   <slot>select_vehicle_strategy_path()</slot>
+  <slot>update_progress_bar(int)</slot>
  </slots>
 </ui>

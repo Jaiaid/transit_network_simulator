@@ -233,8 +233,8 @@ class SimulationThread(threading.Thread):
                     stopdata_filepath=nodecap_filepath,
                     perroutestopdata_filepath=routestop_filepath
                 )
-                # TODO
-                # solve crash due to (possibly) progress bar update thread
+
+                # progress bar crash is solved
                 # crash is solved by using signal and slot to avoid updating progress bar from another thread
                 # signal is created and corresponding slot is implemented in Window class
                 # from another thread signal is emitted to make sure update (slot execution) is done in main thread

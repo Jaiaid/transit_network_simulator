@@ -22,6 +22,16 @@ class Vehicle:
         self.dispatcher = None
         self.strategy = None
         self.repeat = True
+        self.current_pass_type = None
+
+    def switch_to_forward_pass(self):
+        self.current_pass_type = 'f'
+
+    def switch_to_backward_pass(self):
+        self.current_pass_type = 'b'
+
+    def switch_to_transfer_pass(self):
+        self.current_pass_type = 't'
 
     def set_departure_time(self, departure_time: int):
         self.departure_time = departure_time
@@ -84,6 +94,51 @@ class Vehicle:
                     self.route_id, self.id, self.dest_id_passenger_dict[stop_id], stop_id, self.env.now)
             )
             self.dest_id_passenger_dict[stop_id] = 0
+
+    def __forward_pass(self):
+        will_continue = True
+        src = self.current_node_id
+        while will_continue:
+            next_node_id, will_stop, passenger_pick_count, will_continue = self.strategy.get_next_forward_node()
+            if will_continue:
+                edge = self.network.get_edge(src, next_node_id)
+                yield self.env.process(self.pass_edge(edge=edge,
+                                                      pass_time=self.strategy.edge_travarse_time(edge=edge)))
+
+                stop = self.network.get_node(next_node_id)
+                self.strategy.passenger_fill(stop)
+                self.strategy.passenger_drain(stop)
+                src = next_node_id
+
+    def __backward_pass(self):
+        will_continue = True
+        src = self.current_node_id
+        while will_continue:
+            next_node_id, will_stop, passenger_pick_count, will_continue = self.strategy.get_next_backward_node()
+            if will_continue:
+                edge = self.network.get_edge(src, next_node_id)
+                yield self.env.process(self.pass_edge(edge=edge,
+                                                      pass_time=self.strategy.edge_travarse_time(edge=edge)))
+
+                stop = self.network.get_node(next_node_id)
+                self.strategy.passenger_fill(stop)
+                self.strategy.passenger_drain(stop)
+                src = next_node_id
+
+    def __transfer_pass(self):
+        will_continue = True
+        src = self.current_node_id
+        while will_continue:
+            next_node_id, will_stop, passenger_pick_count, will_continue = self.strategy.get_next_transfer_node()
+            if will_continue:
+                edge = self.network.get_edge(src, next_node_id)
+                yield self.env.process(self.pass_edge(edge=edge,
+                                                      pass_time=self.strategy.edge_travarse_time(edge=edge)))
+
+                stop = self.network.get_node(next_node_id)
+                self.strategy.passenger_fill(stop)
+                self.strategy.passenger_drain(stop)
+                src = next_node_id
 
     def process(self):
         yield self.dispatcher.global_vehicle_signal

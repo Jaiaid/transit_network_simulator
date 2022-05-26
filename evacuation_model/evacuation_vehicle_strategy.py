@@ -4,7 +4,7 @@ import copy
 from networkprimitive import Node, Route, Edge
 from vehicle import Vehicle
 from dispatcher import Dispatcher
-from vehiclestrategy import VehicleStrategy
+from strategy import VehicleStrategy
 
 STOP_STANDING_TIME = 0.5
 SHELTER_EVACUATION_TIME = 1

@@ -51,6 +51,15 @@ class VehicleStrategy:
     def transfer_pass(self):
         yield self.env.timeout(2)
 
+    def get_next_forward_node(self) -> (int, bool, int, bool):
+        return 0, False, 0, False
+
+    def get_next_backward_node(self) -> (int, bool, int, bool):
+        return 0, False, 0, False
+
+    def get_next_transfer_node(self) -> (int, bool, int, bool):
+        return 0, False, 0, False
+
     def passenger_fill(self, stop: Node) -> int:
         demand_dict = self.vehicle.network.get_demand(stop.id)
         passenger_increase = 0

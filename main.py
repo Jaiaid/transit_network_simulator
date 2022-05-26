@@ -17,9 +17,10 @@ if __name__ == "__main__":
                         default=False, required=False)
     parser.add_argument("-ts", "--time_step", help="time step used in generate data point for graphs", type=int,
                         default=600, required=False)
-    parser.add_argument("-ds", "--dispatch_strategy", help="which strategy will be followed by vehicle dispatcher",
+    parser.add_argument("-st", "--strategy_class_script_path",
+                        help="script path containing VehicleStrategy and DispatchStrategy class",
                         required=True)
-    parser.add_argument("-vs", "--vehicle_strategy", help="which strategy will be followed by vehicle in transporting",
+    parser.add_argument("-nc", "--node_class_script_path", help="script path containing Node class",
                         required=True)
     parser.add_argument("-velplot", "--avgvelocity_plot", help="if will generate avg velocity plot at given time step",
                         default=False, required=False)
@@ -47,19 +48,12 @@ if __name__ == "__main__":
         simulator: Simulator = Simulator()
 
         # provide datafile and prepare internal datastructure and environment
-        simulator.load_data(
-            networkdata_filepath=network_filepath,
-            demanddata_filepath=demand_filepath,
-            routedata_filepath=route_filepath,
-            fleetdata_filepath=fleet_filepath,
-            edgedata_filepath=edgecap_filepath,
-            stopdata_filepath=nodecap_filepath,
-            perroutestopdata_filepath=routestop_filepath
-        )
 
         Logger.init()
-        simulator.simulate(dispatcher_strategy_full_import_string=args.dispatch_strategy,
-                           vehicle_strategy_full_import_string=args.vehicle_strategy,
+
+        # they maybe provided in steps but maybe it will be easier to give one public method
+        simulator.simulate(strategy_script_path=args.strategy_class_script_path,
+                           node_script_path=args.node_class_script_path,
                            time_length=args.simulate_time_length)
         # close the logger as graph_generator will need the file
         Logger.close()

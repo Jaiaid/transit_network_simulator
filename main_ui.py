@@ -224,15 +224,16 @@ class SimulationThread(threading.Thread):
                     return
 
                 # provide datafile and prepare internal datastructure and environment
-                self.simulator.load_data(
+                self.simulator.load_network_data(
                     networkdata_filepath=network_filepath,
                     demanddata_filepath=demand_filepath,
-                    routedata_filepath=route_filepath,
                     fleetdata_filepath=fleet_filepath,
                     edgedata_filepath=edgecap_filepath,
                     stopdata_filepath=nodecap_filepath,
-                    perroutestopdata_filepath=routestop_filepath
                 )
+
+                self.simulator.load_route_data(routedata_filepath=route_filepath,
+                                               perroutestopdata_filepath=routestop_filepath)
 
                 # progress bar crash is solved
                 # crash is solved by using signal and slot to avoid updating progress bar from another thread

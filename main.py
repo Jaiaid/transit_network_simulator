@@ -53,7 +53,10 @@ if __name__ == "__main__":
 
         # they maybe provided in steps but maybe it will be easier to give one public method
         simulator.simulate(strategy_script_path=args.strategy_class_script_path,
-                           node_script_path=args.node_class_script_path,
+                           node_script_path=args.node_class_script_path, networkdata_filepath=network_filepath,
+                           demanddata_filepath=demand_filepath, fleetdata_filepath=fleet_filepath,
+                           edgedata_filepath=edgecap_filepath, stopdata_filepath=nodecap_filepath,
+                           routedata_filepath=route_filepath, perroutestopdata_filepath=routestop_filepath,
                            time_length=args.simulate_time_length)
         # close the logger as graph_generator will need the file
         Logger.close()

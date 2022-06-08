@@ -21,7 +21,7 @@
     <item>
      <layout class="QGridLayout" name="gridLayout">
       <item row="1" column="5">
-       <widget class="QPushButton" name="dispatcher_strategy_browse_button">
+       <widget class="QPushButton" name="strategy_script_browse_button">
         <property name="text">
          <string>Browse</string>
         </property>
@@ -143,12 +143,12 @@
        </widget>
       </item>
       <item row="1" column="0" colspan="5">
-       <widget class="QLineEdit" name="dispatcher_strategy_filepath">
+       <widget class="QLineEdit" name="strategy_script_filepath_qlineedit">
         <property name="readOnly">
          <bool>true</bool>
         </property>
         <property name="placeholderText">
-         <string>&lt;dispatcher strategy .py path with  TransitDispatcherStrategy class&gt;</string>
+         <string>&lt;.py path with  DispatcherStrategy and VehicleStrategy class&gt;</string>
         </property>
        </widget>
       </item>
@@ -204,19 +204,19 @@
        </widget>
       </item>
       <item row="2" column="5">
-       <widget class="QPushButton" name="vehicle_strategy_browse_button">
+       <widget class="QPushButton" name="node_script_browse_button">
         <property name="text">
          <string>Browse</string>
         </property>
        </widget>
       </item>
       <item row="2" column="0" colspan="5">
-       <widget class="QLineEdit" name="vehicle_strategy_filepath">
+       <widget class="QLineEdit" name="node_script_filepath_qlineedit">
         <property name="readOnly">
          <bool>true</bool>
         </property>
         <property name="placeholderText">
-         <string>&lt;vehicle strategy .py path with  TransitStrategy class&gt;</string>
+         <string>&lt;.py path with Node class&gt;</string>
         </property>
        </widget>
       </item>
@@ -335,38 +335,6 @@
    </hints>
   </connection>
   <connection>
-   <sender>dispatcher_strategy_browse_button</sender>
-   <signal>clicked()</signal>
-   <receiver>MainWindow</receiver>
-   <slot>select_dispatcher_strategy_path()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>757</x>
-     <y>51</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>797</x>
-     <y>38</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>vehicle_strategy_browse_button</sender>
-   <signal>clicked()</signal>
-   <receiver>MainWindow</receiver>
-   <slot>select_vehicle_strategy_path()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>698</x>
-     <y>87</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>795</x>
-     <y>88</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>simulation_progress_bar</sender>
    <signal>valueChanged(int)</signal>
    <receiver>MainWindow</receiver>
@@ -382,6 +350,38 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>strategy_script_browse_button</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>select_strategy_classes_script_path()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>756</x>
+     <y>55</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>796</x>
+     <y>33</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>node_script_browse_button</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>select_node_class_script_path()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>728</x>
+     <y>83</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>795</x>
+     <y>67</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>simulation_duration_update(int)</slot>
@@ -390,8 +390,8 @@
   <slot>update_dir_content(QString)</slot>
   <slot>start_simulation()</slot>
   <slot>start_analysis()</slot>
-  <slot>select_dispatcher_strategy_path()</slot>
-  <slot>select_vehicle_strategy_path()</slot>
   <slot>update_progress_bar(int)</slot>
+  <slot>select_strategy_classes_script_path()</slot>
+  <slot>select_node_class_script_path()</slot>
  </slots>
 </ui>

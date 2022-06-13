@@ -58,18 +58,18 @@ class SpeedBinContainer:
     def __init__(self, resolution):
         self.resolution = resolution
         self.speed_bin_dict: dict[int, SpeedBin] = {}
-        self.vehicle_latest_entry_dict: dict[int, int] = {}
+        self.vehicle_latest_entry_dict: dict[int, float] = {}
 
     def set_time_step(self, avg_velocity_time_step_sec: int):
         self.resolution = avg_velocity_time_step_sec
 
-    def vehicle_enter_data_entry(self, vehicle_id: int, entry_time: int):
+    def vehicle_enter_data_entry(self, vehicle_id: int, entry_time: float):
         self.vehicle_latest_entry_dict[vehicle_id] = entry_time
 
-    def vehicle_leave_data_entry(self, vehicle_id: int, length: int, leave_time: int):
+    def vehicle_leave_data_entry(self, vehicle_id: int, length: float, leave_time: float):
         entry_time = self.vehicle_latest_entry_dict[vehicle_id]
-        entry_event_bin = (entry_time//self.resolution) * self.resolution
-        leave_event_bin = (leave_time//self.resolution) * self.resolution
+        entry_event_bin = (int(entry_time//self.resolution)) * self.resolution
+        leave_event_bin = (int(leave_time//self.resolution)) * self.resolution
 
         if entry_event_bin == leave_event_bin:
             if entry_event_bin not in self.speed_bin_dict:
@@ -82,6 +82,10 @@ class SpeedBinContainer:
 
             if leave_event_bin not in self.speed_bin_dict:
                 self.speed_bin_dict[leave_event_bin] = SpeedBin()
+
+            # add the first portion of traveled length (length traveled in first bin)
+            portion = ((entry_event_bin + self.resolution - entry_time) / (leave_time - entry_time)) * length
+            self.speed_bin_dict[entry_event_bin].add_travel_length(vehicle_id=vehicle_id, length=portion)
 
             prev_time = entry_time
             prev_event_bin = entry_event_bin
@@ -96,7 +100,8 @@ class SpeedBinContainer:
                 prev_event_bin = event_bin
                 prev_time = event_bin
 
-            portion = ((leave_time - prev_event_bin) / (leave_time - entry_time)) * length
+            # add the last portion of traveled length (length traveled in last bin)
+            portion = ((leave_time - leave_event_bin) / (leave_time - entry_time)) * length
             self.speed_bin_dict[leave_event_bin].add_travel_length(vehicle_id=vehicle_id, length=portion)
 
     def generate_graph(self):
@@ -215,11 +220,11 @@ class GraphGenerator:
                         self.hourly_trip_completion_stat[hour] = 0
                     self.hourly_trip_completion_stat[hour] += 1
                 elif event_type == "entering":
-                    timestamp = int(float(result.groups()[6]))
+                    timestamp = float(result.groups()[6])
                     self.speedbin_container.vehicle_enter_data_entry(vehicle_id=vehicle_id, entry_time=timestamp)
                 elif event_type == "leaving":
                     length = float(result.groups()[5])
-                    timestamp = int(float(result.groups()[6]))
+                    timestamp = float(result.groups()[6])
                     self.speedbin_container.vehicle_leave_data_entry(vehicle_id=vehicle_id, length=length,
                                                                      leave_time=timestamp)
                 elif event_type == "boarding":

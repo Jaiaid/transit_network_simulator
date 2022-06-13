@@ -112,7 +112,7 @@ class Window(QMainWindow, Ui_MainWindow):
         filedialog.setNameFilter("python script (*.py)")
         if filedialog.exec_():
             filepath = filedialog.selectedFiles()[0]
-            self.strategy_script_filepath_qlineedit.setText(filepath)
+            self.node_script_filepath_qlineedit.setText(filepath)
 
             if self.input_dir_path.text() is not None:
                 self.update_dir_content(self.input_dir_path.text())

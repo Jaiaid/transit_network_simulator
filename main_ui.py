@@ -200,78 +200,74 @@ class SimulationThread(threading.Thread):
     # find the strategy class from module and load automatically
     # currently class name is provided
     def run(self):
+        self.window_object.disable_ui(change_simulate_button=True)
+
         try:
-            self.window_object.disable_ui(change_simulate_button=True)
+            input_dir = self.window_object.input_dir_path.text()
 
+            nodecap_filepath = "{0}/stopcap.txt".format(input_dir)
+            edgecap_filepath = "{0}/edgecap.txt".format(input_dir)
+            network_filepath = "{0}/network.txt".format(input_dir)
+            demand_filepath = "{0}/demand.txt".format(input_dir)
+            fleet_filepath = "{0}/fleet.txt".format(input_dir)
+            route_filepath = "{0}/route.txt".format(input_dir)
+            routestop_filepath = None
+
+            if os.path.exists("{0}/route_stops.txt".format(input_dir)):
+                routestop_filepath = "{0}/route_stops.txt".format(input_dir)
+
+            # progress bar crash is solved
+            # crash is solved by using signal and slot to avoid updating progress bar from another thread
+            # signal is created and corresponding slot is implemented in Window class
+            # from another thread signal is emitted to make sure update (slot execution) is done in main thread
+            # https://wiki.qt.io/Qt_for_Python_Signals_and_Slots
+            # https://stackoverflow.com/questions/71875808/how-to-update-value-in-progressbar-in-another-thread-in-qt-c
+            # other widget update will be switched to signaling
+            self.simulation_progress_observer_thread = SimulationProgressThread(
+                self.window_object, simulator=self.simulator, duration=self.duration)
+            self.simulation_progress_observer_thread.start()
+
+            Logger.init()
             try:
-                input_dir = self.window_object.input_dir_path.text()
-
-                nodecap_filepath = "{0}/stopcap.txt".format(input_dir)
-                edgecap_filepath = "{0}/edgecap.txt".format(input_dir)
-                network_filepath = "{0}/network.txt".format(input_dir)
-                demand_filepath = "{0}/demand.txt".format(input_dir)
-                fleet_filepath = "{0}/fleet.txt".format(input_dir)
-                route_filepath = "{0}/route.txt".format(input_dir)
-                routestop_filepath = None
-
-                if os.path.exists("{0}/route_stops.txt".format(input_dir)):
-                    routestop_filepath = "{0}/route_stops.txt".format(input_dir)
-
-                # progress bar crash is solved
-                # crash is solved by using signal and slot to avoid updating progress bar from another thread
-                # signal is created and corresponding slot is implemented in Window class
-                # from another thread signal is emitted to make sure update (slot execution) is done in main thread
-                # https://wiki.qt.io/Qt_for_Python_Signals_and_Slots
-                # https://stackoverflow.com/questions/71875808/how-to-update-value-in-progressbar-in-another-thread-in-qt-c
-                # other widget update will be switched to signaling
-                self.simulation_progress_observer_thread = SimulationProgressThread(
-                    self.window_object, simulator=self.simulator, duration=self.duration)
-                self.simulation_progress_observer_thread.start()
-
-                Logger.init()
-                try:
-                    strategy_class_script_path = self.window_object.strategy_script_filepath_qlineedit.text()
-                    node_class_script_path = self.window_object.node_script_filepath_qlineedit.text()
-                    # provide datafile and prepare internal datastructure and environment
-                    # they maybe provided in steps but maybe it will be easier to give one public method
-                    self.simulator.simulate(
-                        strategy_script_path=strategy_class_script_path,
-                        node_script_path=node_class_script_path,
-                        networkdata_filepath=network_filepath,
-                        demanddata_filepath=demand_filepath,
-                        fleetdata_filepath=fleet_filepath,
-                        edgedata_filepath=edgecap_filepath,
-                        stopdata_filepath=nodecap_filepath,
-                        routedata_filepath=route_filepath,
-                        perroutestopdata_filepath=routestop_filepath,
-                        time_length=self.duration)
-                except ModuleNotFoundError or AttributeError as e:
-                    self.window_object.update_message(
-                        "module not found error or attribute error in module loading: {0}, discontinuing simulation".
-                            format(e.__str__())
-                    )
-                    self.window_object.enable_ui(change_simulate_button=True)
-                    return
-                except Exception as e:
-                    self.window_object.update_message(
-                        "unknown exception in module loading: {0}, discontinuing simulation".format(e.__str__()))
-                    self.window_object.enable_ui(change_simulate_button=True)
-                    return
-
-                Logger.close()
+                strategy_class_script_path = self.window_object.strategy_script_filepath_qlineedit.text()
+                node_class_script_path = self.window_object.node_script_filepath_qlineedit.text()
+                # provide datafile and prepare internal datastructure and environment
+                # they maybe provided in steps but maybe it will be easier to give one public method
+                self.simulator.simulate(
+                    strategy_script_path=strategy_class_script_path,
+                    node_script_path=node_class_script_path,
+                    networkdata_filepath=network_filepath,
+                    demanddata_filepath=demand_filepath,
+                    fleetdata_filepath=fleet_filepath,
+                    edgedata_filepath=edgecap_filepath,
+                    stopdata_filepath=nodecap_filepath,
+                    routedata_filepath=route_filepath,
+                    perroutestopdata_filepath=routestop_filepath,
+                    time_length=self.duration)
 
                 self.window_object.update_message(
-                    "simulating data from {0} is done".format(input_dir))
+                    "simulation of data from {0} is done".format(input_dir))
                 self.window_object.update_message(
                     "events saved in {0}/event_log.txt".format(os.path.abspath(os.path.curdir)))
                 # wait for progress bar thread exit
                 self.simulation_progress_observer_thread.join()
+            except ModuleNotFoundError or AttributeError as e:
+                self.window_object.update_message(
+                    "module not found error or attribute error in module loading: {0}, discontinuing simulation".format(
+                        e.__str__()
+                    )
+                )
+                raise e
             except Exception as e:
-                self.window_object.update_message(e.__str__())
+                self.window_object.update_message(
+                    "unknown exception : {0}, discontinuing simulation".format(e.__str__()))
             finally:
-                self.window_object.enable_ui(change_simulate_button=True)
+                self.simulation_progress_observer_thread.stop()
+                Logger.close()
         except Exception as e:
-            print(e)
+            self.window_object.update_message(e.__str__())
+        finally:
+            self.window_object.enable_ui(change_simulate_button=True)
 
     def stop(self):
         self.simulator.stop_simulation()

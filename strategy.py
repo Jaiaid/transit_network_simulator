@@ -72,7 +72,8 @@ class DispatchStrategy:
             route_id += 1
             route_id %= len(self.dispatcher.network.route_list)
 
-    def update_route(self, network: Network, vehicle: Vehicle) -> bool:
+    # return will transfer, will do roundtrip again
+    def update_route(self, network: Network, vehicle: Vehicle) -> (bool, bool):
         if any(self.dispatcher.completion_flag):
             pass
-        return False
+        return False, False

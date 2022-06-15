@@ -25,29 +25,6 @@ class VehicleStrategy:
         self.forward_route_node_id_list = copy.deepcopy(route.route_node_list)
         self.backward_route_node_id_list = list(reversed(route.route_node_list))
 
-    def forward_pass(self):
-        src = self.forward_route_node_id_list[0]
-        for node_no, node_id in enumerate(self.forward_route_node_id_list[1:]):
-            edge = self.vehicle.network.get_edge(src, node_id)
-            yield self.env.process(self.vehicle.pass_edge(edge=edge, pass_time=self.edge_travarse_time(edge=edge)))
-
-            stop = self.vehicle.network.get_node(src)
-            self.passenger_fill(stop)
-            self.passenger_drain(stop)
-            src = node_id
-
-    def backward_pass(self):
-        src = self.backward_route_node_id_list[0]
-        for node_no, node_id in enumerate(self.backward_route_node_id_list[1:]):
-            # reverse is done assuming that reverse edge exist even if not mentioned
-            edge = self.vehicle.network.get_edge(node_id, src)
-            yield self.env.process(self.vehicle.pass_edge(edge=edge, pass_time=self.edge_travarse_time(edge=edge)))
-
-            stop = self.vehicle.network.get_node(src)
-            self.passenger_fill(stop)
-            self.passenger_drain(stop)
-            src = node_id
-
     def transfer_pass(self):
         yield self.env.timeout(2)
 
@@ -98,4 +75,4 @@ class DispatchStrategy:
     def update_route(self, network: Network, vehicle: Vehicle) -> bool:
         if any(self.dispatcher.completion_flag):
             pass
-        return True
+        return False

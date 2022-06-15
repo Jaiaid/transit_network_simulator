@@ -93,11 +93,12 @@ class DispatchStrategy:
                 route_id += 1
                 route_id %= len(self.dispatcher.network.route_list)
 
-    def update_route(self, network: Network, vehicle: Vehicle) -> bool:
+    def update_route(self, network: Network, vehicle: Vehicle) -> (bool, bool):
         # calculate remaining demand
         self.route_demand_dict[vehicle.route_id] = self.__calculate_demand(network, vehicle.route_id)
         if self.route_demand_dict[vehicle.route_id] > 0:
-            return True
+            # route not updated but do roundtrip again
+            return False, True
         # TODO:
         # implement a proper mechanism to detect all route demand is staisfied
         attempt_count = 0
@@ -108,10 +109,12 @@ class DispatchStrategy:
             if self.route_demand_dict[random_route.id] > 0 and \
                     random_route.route_node_list[-1] == vehicle.current_node_id:
                 vehicle.route_id = random_route.id
-                return True
+                # route updated and do roundtrip again
+                return True, True
             attempt_count += 1
 
-        return False
+        # route not updated and don't do roundtrip again
+        return False, False
 
 
 class VehicleStrategy:
@@ -122,10 +125,34 @@ class VehicleStrategy:
         self.forward_route_node_id_list = []
         self.backward_route_node_id_list = []
         self.node_id_demand_dict = {}
+        # keeps counter of current position in node list
+        # used in forward pass, backward pass, transfer pass
+        # should be reset to zero after completion of each pass
+        self.route_list_current_idx = 0
+        # needed in evacuation model to evacuate do roundtrip greedily
+        self.refined_backward_route_node_id_list = []
 
     @staticmethod
     def __id_first_occurance_idx(id_list: list[int], element: int) -> int:
         return id_list.index(element)
+
+    def __calculated_backward_route(self):
+        # first evaluate if backward pass needs refining
+        # as passengers are picked up greedily from earlier stop,
+        # it maybe the case that vehicle don't need to return at the beginning to continue the loop
+        # think like bubble sort
+        self.refined_backward_route_node_id_list = [self.backward_route_node_id_list[0]]
+        node_id_list_inbetween_stops = []
+
+        for node_no, node_id in enumerate(self.backward_route_node_id_list[1:]):
+            if node_id in self.node_id_demand_dict and self.node_id_demand_dict[node_id] == 0:
+                break
+            elif node_id in self.node_id_demand_dict and self.node_id_demand_dict[node_id] > 0:
+                self.refined_backward_route_node_id_list += node_id_list_inbetween_stops
+                self.refined_backward_route_node_id_list.append(node_id)
+                node_id_list_inbetween_stops = []
+            else:
+                node_id_list_inbetween_stops.append(node_id)
 
     def edge_travarse_time(self, edge: Edge) -> float:
         return edge.length / self.vehicle.speed
@@ -143,14 +170,85 @@ class VehicleStrategy:
             if demand > 0:
                 self.node_id_demand_dict[node_id] = demand
 
-    def get_next_forward_node(self) -> (int, bool, int, bool):
-        return 0, False, 0, False
+    # return next_node_id, will_stop, passenger_pick_count, will_continue, wait time
+    def get_next_forward_node(self) -> (int, bool, int, bool, int):
+        # TODO
+        # as a node may be repeated start_node_idx may not be the index of first appearance
+        # start_node_idx = self.forward_route_node_id_list.index(self.vehicle.current_node_id)
+        src = self.vehicle.current_node_id
+        next_node_id = -1
+        wait_time = 0
+        passenger_pick_count = 0
+        will_stop = False
+        will_continue = False
 
-    def get_next_backward_node(self) -> (int, bool, int, bool):
-        return 0, False, 0, False
+        # as it is evacuation scenario last node will not have any demand but it will drain passenger
+        if src in self.node_id_demand_dict or self.route_list_current_idx + 1 == len(self.forward_route_node_id_list):
+            stop = self.vehicle.network.get_node(src)
+            self.passenger_fill(stop)
+            self.passenger_drain(stop)
+            will_stop = True
+            wait_time = STOP_STANDING_TIME + SHELTER_EVACUATION_TIME
 
-    def get_next_transfer_node(self) -> (int, bool, int, bool):
-        return 0, False, 0, False
+        if self.route_list_current_idx + 1 < len(self.forward_route_node_id_list):
+            next_node_id = self.forward_route_node_id_list[self.route_list_current_idx + 1]
+            will_continue = True
+            # update at which position of current node list we will be in
+            self.route_list_current_idx += 1
+        else:
+            wait_time = STOP_STANDING_TIME + SHELTER_EVACUATION_TIME
+            # resetting the index as no next node in forward pass
+            self.route_list_current_idx = 0
+
+        return next_node_id, will_stop, passenger_pick_count, will_continue, wait_time
+
+    def get_next_backward_node(self) -> (int, bool, int, bool, int):
+        # if vehicle is at first node of backward pass let's calculated the backward pass node list
+        if self.route_list_current_idx == 0:
+            self.__calculated_backward_route()
+
+        next_node_id = -1
+        wait_time = 0
+        passenger_pick_count = 0
+        will_stop = False
+        will_continue = False
+
+        if len(self.refined_backward_route_node_id_list) > 1 and \
+                self.route_list_current_idx + 1 < len(self.refined_backward_route_node_id_list):
+            next_node_id = self.refined_backward_route_node_id_list[self.route_list_current_idx + 1]
+            will_continue = True
+            # update at which position of current node list we will be in
+            self.route_list_current_idx += 1
+        else:
+            # resetting the index as no next node in backward pass
+            self.route_list_current_idx = \
+                len(self.forward_route_node_id_list) - len(self.refined_backward_route_node_id_list)
+            self.signal_completion()
+
+        return next_node_id, will_stop, passenger_pick_count, will_continue, wait_time
+
+    def get_next_transfer_node(self) -> (int, bool, int, bool, int):
+        # if vehicle is will start at node of backward pass let's calculated the backward pass node list
+        if self.route_list_current_idx == 0:
+            self.backward_route_node_id_list =\
+                list(reversed(self.vehicle.network.get_route(self.vehicle.route_id).route_node_list))
+
+        next_node_id = -1
+        wait_time = 0
+        passenger_pick_count = 0
+        will_stop = False
+        will_continue = False
+
+        if self.route_list_current_idx + 1 < len(self.backward_route_node_id_list):
+            next_node_id = self.backward_route_node_id_list[self.route_list_current_idx + 1]
+            will_continue = True
+            # update at which position of current node list we will be in
+            self.route_list_current_idx += 1
+        else:
+            # resetting the index as no next node in backward pass
+            self.route_list_current_idx = 0
+
+        return next_node_id, will_stop, passenger_pick_count, will_continue, wait_time
 
     def forward_pass(self):
         # TODO

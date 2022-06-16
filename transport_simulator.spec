@@ -6,7 +6,7 @@ block_cipher = None
 
 a = Analysis(
     ['main_ui.py', 'main_window_ui.py', 'network.py', 'networkprimitive.py', 'simulator.py', 'vehicle.py',
-    'vehiclestrategy.py', 'dispatcher.py', 'dispatchstrategy.py', 'fleet.py', 'graph_generator.py', 'logger.py'],
+    'strategy.py', 'dispatcher.py', 'fleet.py', 'graph_generator.py', 'logger.py'],
     pathex=[],
     binaries=[],
     datas=[],
@@ -42,7 +42,7 @@ windowed_exe = EXE(
 
 b = Analysis(
     ['main.py', 'network.py', 'networkprimitive.py', 'simulator.py', 'vehicle.py',
-    'vehiclestrategy.py', 'dispatcher.py', 'dispatchstrategy.py', 'fleet.py', 'graph_generator.py', 'logger.py'],
+    'strategy.py', 'dispatcher.py', 'fleet.py', 'graph_generator.py', 'logger.py'],
     pathex=[],
     binaries=[],
     datas=[],

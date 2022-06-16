@@ -184,27 +184,29 @@ class Vehicle:
         while self.repeat:
             Logger.log(
                 "route {0} vehicle {1} trip_start {2} at {3:.0f}".format(self.route_id, self.id, self.trip_count,
-                                                                     self.env.now))
+                                                                         self.env.now))
             # do forward pass of trip
             yield self.env.process(self.__forward_pass())
             Logger.log("route {0} vehicle {1} forward_pass_completion at {2:.0f}".format(self.route_id, self.id,
-                                                                                     self.env.now))
+                                                                                         self.env.now))
             # yield self.env.process(self.wait(5))
             # do backward pass of trip
             yield self.env.process(self.__backward_pass())
             Logger.log("route {0} vehicle {1} backward_pass_completion at {2:.0f}".format(self.route_id, self.id,
-                                                                                      self.env.now))
+                                                                                          self.env.now))
             # yield self.env.process(self.wait(5))
             # notify dispatcher about trip completion
             self.dispatcher.notify(self.id)
             self.trip_count += 1
             Logger.log("route {0} vehicle {1} trip_completion {2} at {3:.0f}".format(self.route_id, self.id,
-                                                                                 self.trip_count, self.env.now))
+                                                                                     self.trip_count, self.env.now))
 
             will_transfer, self.repeat = self.dispatcher.update_route(vehicle=self)
             if will_transfer:
                 yield self.env.process(self.__transfer_pass())
                 Logger.log("route {0} vehicle {1} transfer_pass_completion at {2:.0f}".format(self.route_id, self.id,
-                                                                                      self.env.now))
+                                                                                              self.env.now))
+                # trip should be planned again as new route
+                self.strategy.plan_trip()
 
             # yield self.dispatcher_signal

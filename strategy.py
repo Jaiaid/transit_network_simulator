@@ -2,6 +2,7 @@ import simpy
 import copy
 
 from networkprimitive import Node, Edge, Route
+from network import Network
 from vehicle import Vehicle
 from dispatcher import Dispatcher
 
@@ -24,31 +25,17 @@ class VehicleStrategy:
         self.forward_route_node_id_list = copy.deepcopy(route.route_node_list)
         self.backward_route_node_id_list = list(reversed(route.route_node_list))
 
-    def forward_pass(self):
-        src = self.forward_route_node_id_list[0]
-        for node_no, node_id in enumerate(self.forward_route_node_id_list[1:]):
-            edge = self.vehicle.network.get_edge(src, node_id)
-            yield self.env.process(self.vehicle.pass_edge(edge=edge, pass_time=self.edge_travarse_time(edge=edge)))
-
-            stop = self.vehicle.network.get_node(src)
-            self.passenger_fill(stop)
-            self.passenger_drain(stop)
-            src = node_id
-
-    def backward_pass(self):
-        src = self.backward_route_node_id_list[0]
-        for node_no, node_id in enumerate(self.backward_route_node_id_list[1:]):
-            # reverse is done assuming that reverse edge exist even if not mentioned
-            edge = self.vehicle.network.get_edge(node_id, src)
-            yield self.env.process(self.vehicle.pass_edge(edge=edge, pass_time=self.edge_travarse_time(edge=edge)))
-
-            stop = self.vehicle.network.get_node(src)
-            self.passenger_fill(stop)
-            self.passenger_drain(stop)
-            src = node_id
-
     def transfer_pass(self):
         yield self.env.timeout(2)
+
+    def get_next_forward_node(self) -> (int, bool, int, bool):
+        return 0, False, 0, False
+
+    def get_next_backward_node(self) -> (int, bool, int, bool):
+        return 0, False, 0, False
+
+    def get_next_transfer_node(self) -> (int, bool, int, bool):
+        return 0, False, 0, False
 
     def passenger_fill(self, stop: Node) -> int:
         demand_dict = self.vehicle.network.get_demand(stop.id)
@@ -70,3 +57,23 @@ class VehicleStrategy:
 
     def signal_completion(self):
         self.dispatcher.notify(self.vehicle.id)
+
+
+class DispatchStrategy:
+    def __init__(self, dispatcher: Dispatcher, env: simpy.Environment):
+        self.dispatcher: Dispatcher = dispatcher
+        self.env = env
+
+    def assign_route(self, network: Network):
+        # basic round robin assignment
+        route_id = 0
+        for vehicle_id in self.dispatcher.fleet.vehicle_dict:
+            self.dispatcher.fleet.vehicle_dict[vehicle_id].route_id = self.dispatcher.network.route_list[route_id].id
+            route_id += 1
+            route_id %= len(self.dispatcher.network.route_list)
+
+    # return will transfer, will do roundtrip again
+    def update_route(self, network: Network, vehicle: Vehicle) -> (bool, bool):
+        if any(self.dispatcher.completion_flag):
+            pass
+        return False, False

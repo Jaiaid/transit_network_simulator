@@ -22,6 +22,16 @@ class Vehicle:
         self.dispatcher = None
         self.strategy = None
         self.repeat = True
+        self.current_pass_type = None
+
+    def switch_to_forward_pass(self):
+        self.current_pass_type = 'f'
+
+    def switch_to_backward_pass(self):
+        self.current_pass_type = 'b'
+
+    def switch_to_transfer_pass(self):
+        self.current_pass_type = 't'
 
     def set_departure_time(self, departure_time: int):
         self.departure_time = departure_time
@@ -85,36 +95,118 @@ class Vehicle:
             )
             self.dest_id_passenger_dict[stop_id] = 0
 
+    def __forward_pass(self):
+        will_continue = True
+        src = self.current_node_id
+        while will_continue:
+            next_node_id, will_stop, passenger_pick_count, will_continue, wait_time =\
+                self.strategy.get_next_forward_node()
+
+            # stop = self.network.get_node(self.current_node_id)
+            # if will_stop:
+            #     if passenger_pick_count > 0:
+            #         self.strategy.passenger_fill(stop)
+            #     self.strategy.passenger_drain(stop)
+
+            if will_continue:
+                edge = self.network.get_edge(src, next_node_id)
+                yield self.env.process(self.pass_edge(edge=edge,
+                                                      pass_time=self.strategy.edge_travarse_time(edge=edge)))
+                src = next_node_id
+                self.current_node_id = src
+
+            # wait according to the wait time
+            yield self.env.process(self.wait(time=wait_time))
+
+    def __backward_pass(self):
+        will_continue = True
+        src = self.current_node_id
+        while will_continue:
+            next_node_id, will_stop, passenger_pick_count, will_continue, wait_time =\
+                self.strategy.get_next_backward_node()
+
+            # stop = self.network.get_node(self.current_node_id)
+            # if will_stop:
+            #     if passenger_pick_count > 0:
+            #         self.strategy.passenger_fill(stop)
+            #     self.strategy.passenger_drain(stop)
+
+            if will_continue:
+                # TODO think what to do
+                # for now we are assuming that backward pass is through same edge is always
+                # possible even if the graph is directed,
+                # reverse is done assuming that reverse edge exist even if not mentioned
+                # hence, edge : (next_node_id, src) not (src, next_node_id)
+                edge = self.network.get_edge(next_node_id, src)
+                yield self.env.process(self.pass_edge(edge=edge,
+                                                      pass_time=self.strategy.edge_travarse_time(edge=edge)))
+                src = next_node_id
+                self.current_node_id = src
+
+            # wait according to the wait time
+            yield self.env.process(self.wait(time=wait_time))
+
+    def __transfer_pass(self):
+        will_continue = True
+        src = self.current_node_id
+        while will_continue:
+            next_node_id, will_stop, passenger_pick_count, will_continue, wait_time =\
+                self.strategy.get_next_transfer_node()
+
+            # stop = self.network.get_node(self.current_node_id)
+            # if will_stop:
+            #     if passenger_pick_count > 0:
+            #         self.strategy.passenger_fill(stop)
+            #     self.strategy.passenger_drain(stop)
+
+            if will_continue:
+                # TODO think what to do
+                # for now we are assuming that transfer pass to new route first node is through same edge
+                # possible even if the graph is directed,
+                # reverse is done assuming that reverse edge exist even if not mentioned
+                # hence, edge : (next_node_id, src) not (src, next_node_id)
+                edge = self.network.get_edge(next_node_id, src)
+                yield self.env.process(self.pass_edge(edge=edge,
+                                                      pass_time=self.strategy.edge_travarse_time(edge=edge)))
+                src = next_node_id
+                self.current_node_id = src
+
+            # wait according to the wait time
+            yield self.env.process(self.wait(time=wait_time))
+
     def process(self):
         yield self.dispatcher.global_vehicle_signal
 
+        # first plan trip
+        self.strategy.plan_trip()
+
         yield self.env.timeout(delay=self.departure_time)
         while self.repeat:
-            # first plan trip
-            self.strategy.plan_trip()
             Logger.log(
                 "route {0} vehicle {1} trip_start {2} at {3:.0f}".format(self.route_id, self.id, self.trip_count,
-                                                                     self.env.now))
+                                                                         self.env.now))
             # do forward pass of trip
-            yield self.env.process(self.strategy.forward_pass())
+            yield self.env.process(self.__forward_pass())
             Logger.log("route {0} vehicle {1} forward_pass_completion at {2:.0f}".format(self.route_id, self.id,
-                                                                                     self.env.now))
+                                                                                         self.env.now))
             # yield self.env.process(self.wait(5))
             # do backward pass of trip
-            yield self.env.process(self.strategy.backward_pass())
+            yield self.env.process(self.__backward_pass())
             Logger.log("route {0} vehicle {1} backward_pass_completion at {2:.0f}".format(self.route_id, self.id,
-                                                                                      self.env.now))
+                                                                                          self.env.now))
             # yield self.env.process(self.wait(5))
             # notify dispatcher about trip completion
             self.dispatcher.notify(self.id)
             self.trip_count += 1
             Logger.log("route {0} vehicle {1} trip_completion {2} at {3:.0f}".format(self.route_id, self.id,
-                                                                                 self.trip_count, self.env.now))
+                                                                                     self.trip_count, self.env.now))
 
-            self.repeat = self.dispatcher.update_route(vehicle=self)
-            if self.repeat:
-                yield self.env.process(self.strategy.transfer_pass())
+            will_transfer, self.repeat = self.dispatcher.update_route(vehicle=self)
+            if will_transfer:
+                yield self.env.process(self.__transfer_pass())
                 Logger.log("route {0} vehicle {1} transfer_pass_completion at {2:.0f}".format(self.route_id, self.id,
-                                                                                      self.env.now))
+                                                                                              self.env.now))
+                # trip should be planned again as new route
+                self.strategy.plan_trip()
 
             # yield self.dispatcher_signal

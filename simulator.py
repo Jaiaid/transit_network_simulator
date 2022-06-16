@@ -6,8 +6,7 @@ import sys
 
 from network import Network
 from fleet import Fleet
-from vehiclestrategy import VehicleStrategy
-from dispatchstrategy import DispatchStrategy
+from strategy import VehicleStrategy, DispatchStrategy
 from dispatcher import Dispatcher
 from logger import Logger
 
@@ -27,7 +26,7 @@ class Simulator:
     '''
     will load python module on runtime
     '''
-    def load_vehicle_strategy(self, vehicle_strategy_full_import_string: str):
+    def __load_vehicle_strategy(self, vehicle_strategy_full_import_string: str):
         import_data = vehicle_strategy_full_import_string.split(".")
         module_path = ".".join(import_data[:-1])
         # extract module name by removing .py from basepath
@@ -40,7 +39,7 @@ class Simulator:
         spec.loader.exec_module(module)
         self.vehicle_strategy_class = getattr(module, class_name)
 
-    def load_dispatcher_strategy(self, dispatcher_strategy_full_import_string: str):
+    def __load_dispatcher_strategy(self, dispatcher_strategy_full_import_string: str):
         import_data = dispatcher_strategy_full_import_string.split(".")
         module_path = ".".join(import_data[:-1])
         # extract module name by removing .py from basepath
@@ -53,13 +52,24 @@ class Simulator:
         spec.loader.exec_module(module)
         self.dispatcher_strategy_class = getattr(module, class_name)
 
-    def load_strategy(self, dispatcher_strategy_full_import_string: str, vehicle_strategy_full_import_string: str):
-        self.load_dispatcher_strategy(dispatcher_strategy_full_import_string=dispatcher_strategy_full_import_string)
-        self.load_vehicle_strategy(vehicle_strategy_full_import_string=vehicle_strategy_full_import_string)
+    def __load_strategy(self, strategy_script_path: str):
+        self.__load_dispatcher_strategy(dispatcher_strategy_full_import_string=strategy_script_path + ".DispatchStrategy")
+        self.__load_vehicle_strategy(vehicle_strategy_full_import_string=strategy_script_path + ".VehicleStrategy")
 
-    def load_data(self, networkdata_filepath: str, demanddata_filepath: str, routedata_filepath: str,
-                  fleetdata_filepath: str, edgedata_filepath: str, stopdata_filepath: str,
-                  perroutestopdata_filepath: str = None):
+    def __load_network_data(self, networkdata_filepath: str, demanddata_filepath: str,
+                            fleetdata_filepath: str, edgedata_filepath: str, stopdata_filepath: str,
+                            node_class_script_path: str):
+        self.network.load_network_data(network_filepath=networkdata_filepath,
+                                       network_demand_filepath=demanddata_filepath,
+                                       network_edgecap_filepath=edgedata_filepath,
+                                       network_nodecap_filepath=stopdata_filepath,
+                                       node_class_script_path=node_class_script_path)
+
+        self.fleet.load_data(filepath=fleetdata_filepath)
+
+    def __load_route_data(self, routedata_filepath: str, perroutestopdata_filepath: str = None):
+        self.network.load_route_data(network_route_filepath=routedata_filepath)
+
         if perroutestopdata_filepath is not None:
             # route stop list data is given
             self.stop_list = []
@@ -69,22 +79,31 @@ class Simulator:
                     l = [int(_) for _ in line.split()]
                     self.stop_list.append(l)
 
-        self.network.load_network_data(network_filepath=networkdata_filepath,
-                                       network_demand_filepath=demanddata_filepath,
-                                       network_edgecap_filepath=edgedata_filepath,
-                                       network_nodecap_filepath=stopdata_filepath)
-        self.network.load_route_data(network_route_filepath=routedata_filepath)
-
-        self.fleet.load_data(filepath=fleetdata_filepath)
-
     def get_time(self) -> int:
         return self.env.now
 
-    def simulate(self, dispatcher_strategy_full_import_string: str, vehicle_strategy_full_import_string: str,
+    def simulate(self, strategy_script_path: str, node_script_path: str,
+                 networkdata_filepath: str, demanddata_filepath: str,
+                 fleetdata_filepath: str, edgedata_filepath: str, stopdata_filepath: str,
+                 routedata_filepath: str, perroutestopdata_filepath: str,
                  time_length: int):
+
+        Logger.log("loading data and node class")
+        self.__load_network_data(
+            networkdata_filepath=networkdata_filepath,
+            demanddata_filepath=demanddata_filepath,
+            fleetdata_filepath=fleetdata_filepath,
+            edgedata_filepath=edgedata_filepath,
+            stopdata_filepath=stopdata_filepath,
+            node_class_script_path=node_script_path
+        )
+
+        self.__load_route_data(routedata_filepath=routedata_filepath,
+                               perroutestopdata_filepath=perroutestopdata_filepath)
+
         Logger.log("loading strategy classes")
         # load dispatcher and vehicle strategy
-        self.load_strategy(dispatcher_strategy_full_import_string, vehicle_strategy_full_import_string)
+        self.__load_strategy(strategy_script_path)
         Logger.log("dispatcher strategy class : {0}".format(self.dispatcher_strategy_class))
         Logger.log("dispatcher strategy class : {0}".format(self.vehicle_strategy_class))
 

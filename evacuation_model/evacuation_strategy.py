@@ -2,11 +2,11 @@ import simpy
 import copy
 import random
 
-from networkprimitive import Edge
+from networkprimitive import Edge, Node
 from dispatcher import Dispatcher
 from network import Network
 from vehicle import Vehicle
-from evacuation_node import Node
+# from evacuation_node import Node
 
 # 2 minute gap between each fleet
 FLEET_DEPARTURE_TIME_GAP_SEC = 120
@@ -182,7 +182,7 @@ class VehicleStrategy:
         will_stop = False
         will_continue = False
 
-        # as it is evacuation scenario last node will not have any demand but it will drain passenger
+        # as it is evacuation scenario last node will not have any demand, but it will drain passenger
         if src in self.node_id_demand_dict or self.route_list_current_idx + 1 == len(self.forward_route_node_id_list):
             stop = self.vehicle.network.get_node(src)
             self.passenger_fill(stop)
@@ -220,9 +220,12 @@ class VehicleStrategy:
             # update at which position of current node list we will be in
             self.route_list_current_idx += 1
         else:
-            # resetting the index as no next node in backward pass
             self.route_list_current_idx = \
                 len(self.forward_route_node_id_list) - len(self.refined_backward_route_node_id_list)
+            # if following is true, it means vehicle has not done any backtrack as no demand to fulfill
+            # this means next pass will be transfer pass, so should be resetted for new node list in transfer pass
+            if self.route_list_current_idx + 1 == len(self.forward_route_node_id_list):
+                self.route_list_current_idx = 0
             self.signal_completion()
 
         return next_node_id, will_stop, passenger_pick_count, will_continue, wait_time
@@ -245,7 +248,7 @@ class VehicleStrategy:
             # update at which position of current node list we will be in
             self.route_list_current_idx += 1
         else:
-            # resetting the index as no next node in backward pass
+            # resetting the index as no next node in transfer pass
             self.route_list_current_idx = 0
 
         return next_node_id, will_stop, passenger_pick_count, will_continue, wait_time

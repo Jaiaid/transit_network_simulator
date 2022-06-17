@@ -59,19 +59,20 @@ class EdgeVehicleBinContainer:
 
     def __binary_search_nearest_timebin(self, timebin: int):
         f_indx = 0
-        l_indx = len(self.sorted_timebin)
-        m_indx = int((f_indx + l_indx) // 2)
+        l_indx = len(self.sorted_timebin) - 1
 
-        while f_indx <= l_indx:
+        while f_indx < l_indx:
+            m_indx = int((f_indx + l_indx) // 2)
             if self.sorted_timebin[m_indx] < timebin:
-                f_indx = m_indx + 1
+                f_indx = min(m_indx + 1, len(self.sorted_timebin) - 1)
             elif self.sorted_timebin[m_indx] > timebin:
-                l_indx = m_indx - 1
+                l_indx = max(m_indx - 1, 0)
             else:
                 return self.sorted_timebin[m_indx]
 
         if abs(self.sorted_timebin[f_indx] - timebin) < abs(self.sorted_timebin[l_indx] - timebin):
             return self.sorted_timebin[f_indx]
+        print("j")
         return self.sorted_timebin[l_indx]
 
     def set_time_step(self, timestep_sec: int):
@@ -189,7 +190,7 @@ class NetworkVisualizer:
         val_map = {'A': 1.0,
                    'D': 0.5714285714285714,
                    'H': 0.0}
-        values = [val_map.get(node, 0.25) for node in self.drawn_network.nodes()]
+        values = [sum(self.network.get_node(node_id=node).dest_id_passenger_dict.values()) for node in self.drawn_network.nodes()]
 
         # draw nodes
         nx.draw_networkx_nodes(self.drawn_network, self.network_layout, ax=self.ax, cmap=plt.get_cmap('jet'),
@@ -225,7 +226,8 @@ class NetworkVisualizer:
         val_map = {'A': 1.0,
                    'D': 0.5714285714285714,
                    'H': 0.0}
-        values = [val_map.get(node, 0.25) for node in self.drawn_network.nodes()]
+        # values = [val_map.get(node, 0.25) for node in self.drawn_network.nodes()]
+        values = [1.0 for node in self.drawn_network.nodes()]
         # draw nodes
         nx.draw_networkx_nodes(self.drawn_network, self.network_layout, ax=self.ax, cmap=plt.get_cmap('jet'),
                                node_color=values, node_size=100)
@@ -265,7 +267,7 @@ if __name__=="__main__":
     parser.add_argument("-ts", "--time_step", help="time step used in generate data point for graphs", type=int,
                         default=600, required=False)
     parser.add_argument("-dur", "--duration", help="graph will be simulated for how many in simulator second", type=int,
-                        default=21600, required=False)
+                        default=86400, required=False)
     parser.add_argument("-nc", "--node_class_script_path", help="script path containing Node class",
                         required=True)
     # get cmd line arguments

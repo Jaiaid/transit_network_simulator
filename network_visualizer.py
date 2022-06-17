@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as anime
 
 from network import Network
+from networkprimitive import Node
 from fleet import Fleet
 
 
@@ -72,7 +73,6 @@ class EdgeVehicleBinContainer:
 
         if abs(self.sorted_timebin[f_indx] - timebin) < abs(self.sorted_timebin[l_indx] - timebin):
             return self.sorted_timebin[f_indx]
-        print("j")
         return self.sorted_timebin[l_indx]
 
     def set_time_step(self, timestep_sec: int):
@@ -172,6 +172,37 @@ class NetworkVisualizer:
                         edge_id=edge_id, vehicle_length=self.fleet.vehicle_dict[vehicle_id].length, leave_time=timestamp
                     )
 
+    def __node_property_resolve(self, node: Node) -> ((float, float, float), int):
+        demand = sum(node.get_demand_dict().values())
+        is_route_endpoint = False
+        for route in self.network.route_list:
+            if route.route_node_list[-1] == node.id:
+                is_route_endpoint = True
+                break
+        # nodes with demands are drawn as red node
+        if demand > 0:
+            return (1.0, 0, 0), 100
+        # endpoints but no demand are drawn as blue node
+        elif is_route_endpoint:
+            return (0, 0, 1.0), 100
+        # node with no demand and not route endpoint is drawn as black and zero size
+        # which means only label will be visible
+        return (0, 0, 0), 0
+
+    def __edge_color_resolve(self, holding: int, capacity: int) -> (float, float, float):
+        occupied = holding / capacity
+
+        # https://colorcodes.io/blue/sky-blue-color-codes/
+        if occupied < 0.2:
+            return 0, 1.0, 0
+        elif occupied < 0.2:
+            return 0, 0.71, 0.89
+        elif occupied < 0.4:
+            return 0.89, 0.65, 0.04
+        elif occupied < 0.6:
+            return 0.89, 0.2, 0.04
+        return 0.59, 0.16, 0.06
+
     def draw_network_view(self):
         self.fig.set_tight_layout(True)
         # add edges, node will be added from the edge key list
@@ -186,15 +217,16 @@ class NetworkVisualizer:
         # set the layout
         self.network_layout = nx.spring_layout(self.drawn_network, seed=56416456)
 
-        # value for nodes
-        val_map = {'A': 1.0,
-                   'D': 0.5714285714285714,
-                   'H': 0.0}
-        values = [sum(self.network.get_node(node_id=node).dest_id_passenger_dict.values()) for node in self.drawn_network.nodes()]
+        colors = []
+        sizes = []
+        for node in self.drawn_network.nodes():
+            color, size = self.__node_property_resolve(node=self.network.get_node(node_id=node))
+            colors.append(color)
+            sizes.append(size)
 
         # draw nodes
         nx.draw_networkx_nodes(self.drawn_network, self.network_layout, ax=self.ax, cmap=plt.get_cmap('jet'),
-                               node_color=values, node_size=100)
+                               node_color=colors, node_size=sizes)
         # draw label
         nx.draw_networkx_labels(self.drawn_network, self.network_layout, ax=self.ax, font_size=5)
         # draw edges, all edges are green color at first
@@ -218,19 +250,20 @@ class NetworkVisualizer:
             if capacity == 0:
                 edge_color_list.append((1.0, 1.0, 1.0))
             else:
-                edge_color_list.append((holding/capacity, 1-holding/capacity, 0))
+                edge_color_list.append(self.__edge_color_resolve(holding=int(holding), capacity=capacity))
 
         # add the edges
         self.drawn_network.add_edges_from(self.edgekey_list)
-        # value for nodes
-        val_map = {'A': 1.0,
-                   'D': 0.5714285714285714,
-                   'H': 0.0}
-        # values = [val_map.get(node, 0.25) for node in self.drawn_network.nodes()]
-        values = [1.0 for node in self.drawn_network.nodes()]
+        # color and size for nodes
+        colors = []
+        sizes = []
+        for node in self.drawn_network.nodes():
+            color, size = self.__node_property_resolve(node=self.network.get_node(node_id=node))
+            colors.append(color)
+            sizes.append(size)
         # draw nodes
         nx.draw_networkx_nodes(self.drawn_network, self.network_layout, ax=self.ax, cmap=plt.get_cmap('jet'),
-                               node_color=values, node_size=100)
+                               node_color=colors, node_size=sizes)
         # draw label
         nx.draw_networkx_labels(self.drawn_network, self.network_layout, ax=self.ax, font_size=5)
         # draw edges, all edges are green color at first
@@ -278,6 +311,7 @@ if __name__=="__main__":
     network_filepath = "{0}/network.txt".format(args.input_dir)
     demand_filepath = "{0}/demand.txt".format(args.input_dir)
     fleet_filepath = "{0}/fleet.txt".format(args.input_dir)
+    route_filepath = "{0}/route.txt".format(args.input_dir)
 
     # not needed, just to reuse already implemented Network and Fleet object
     env = simpy.Environment()
@@ -286,6 +320,7 @@ if __name__=="__main__":
     network.load_network_data(network_filepath=network_filepath, network_demand_filepath=demand_filepath,
                               network_edgecap_filepath=edgecap_filepath, network_nodecap_filepath=nodecap_filepath,
                               node_class_script_path=args.node_class_script_path)
+    network.load_route_data(network_route_filepath=route_filepath)
 
     fleet: Fleet = Fleet(env=env)
     fleet.load_data(filepath=fleet_filepath)

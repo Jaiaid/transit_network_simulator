@@ -183,7 +183,7 @@ class NetworkVisualizer:
         # add edges
         self.drawn_network.add_edges_from(self.edgekey_list)
         # set the layout
-        self.network_layout = nx.spring_layout(self.drawn_network)
+        self.network_layout = nx.spring_layout(self.drawn_network, seed=56416456)
 
         # value for nodes
         val_map = {'A': 1.0,
@@ -266,6 +266,8 @@ if __name__=="__main__":
                         default=600, required=False)
     parser.add_argument("-dur", "--duration", help="graph will be simulated for how many in simulator second", type=int,
                         default=21600, required=False)
+    parser.add_argument("-nc", "--node_class_script_path", help="script path containing Node class",
+                        required=True)
     # get cmd line arguments
     args = parser.parse_args()
 
@@ -280,7 +282,8 @@ if __name__=="__main__":
     # load network data
     network: Network = Network(env=env)
     network.load_network_data(network_filepath=network_filepath, network_demand_filepath=demand_filepath,
-                              network_edgecap_filepath=edgecap_filepath, network_nodecap_filepath=nodecap_filepath)
+                              network_edgecap_filepath=edgecap_filepath, network_nodecap_filepath=nodecap_filepath,
+                              node_class_script_path=args.node_class_script_path)
 
     fleet: Fleet = Fleet(env=env)
     fleet.load_data(filepath=fleet_filepath)

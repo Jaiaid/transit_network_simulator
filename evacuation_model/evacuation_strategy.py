@@ -303,8 +303,7 @@ class VehicleStrategy:
         if len(refined_backward_route_node_id_list) > 1:
             src = refined_backward_route_node_id_list[0]
             for node_no, node_id in enumerate(refined_backward_route_node_id_list[1:]):
-                # reverse is done assuming that reverse edge exist even if not mentioned
-                edge = self.vehicle.network.get_edge(node_id, src)
+                edge = self.vehicle.network.get_edge(src, node_id)
                 yield self.env.process(self.vehicle.pass_edge(edge=edge, pass_time=self.edge_travarse_time(edge=edge)))
 
                 src = node_id
@@ -320,8 +319,7 @@ class VehicleStrategy:
 
         src = newly_assigned_backward_route_node_id_list[0]
         for node_no, node_id in enumerate(newly_assigned_backward_route_node_id_list[1:]):
-            # reverse is done assuming that reverse edge exist even if not mentioned
-            edge = self.vehicle.network.get_edge(node_id, src)
+            edge = self.vehicle.network.get_edge(src, node_id)
             yield self.env.process(self.vehicle.pass_edge(edge=edge, pass_time=self.edge_travarse_time(edge=edge)))
 
             src = node_id

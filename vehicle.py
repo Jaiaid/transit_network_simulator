@@ -132,12 +132,7 @@ class Vehicle:
             #     self.strategy.passenger_drain(stop)
 
             if will_continue:
-                # TODO think what to do
-                # for now we are assuming that backward pass is through same edge is always
-                # possible even if the graph is directed,
-                # reverse is done assuming that reverse edge exist even if not mentioned
-                # hence, edge : (next_node_id, src) not (src, next_node_id)
-                edge = self.network.get_edge(next_node_id, src)
+                edge = self.network.get_edge(src, next_node_id)
                 yield self.env.process(self.pass_edge(edge=edge,
                                                       pass_time=self.strategy.edge_travarse_time(edge=edge)))
                 src = next_node_id
@@ -160,12 +155,7 @@ class Vehicle:
             #     self.strategy.passenger_drain(stop)
 
             if will_continue:
-                # TODO think what to do
-                # for now we are assuming that transfer pass to new route first node is through same edge
-                # possible even if the graph is directed,
-                # reverse is done assuming that reverse edge exist even if not mentioned
-                # hence, edge : (next_node_id, src) not (src, next_node_id)
-                edge = self.network.get_edge(next_node_id, src)
+                edge = self.network.get_edge(src, next_node_id)
                 yield self.env.process(self.pass_edge(edge=edge,
                                                       pass_time=self.strategy.edge_travarse_time(edge=edge)))
                 src = next_node_id
@@ -177,7 +167,7 @@ class Vehicle:
     def process(self):
         yield self.dispatcher.global_vehicle_signal
 
-        # first plan trip
+        # first, plan trip
         self.strategy.plan_trip()
 
         yield self.env.timeout(delay=self.departure_time)

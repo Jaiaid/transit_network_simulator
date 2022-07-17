@@ -178,7 +178,34 @@ class GraphGenerator:
         self.populationbin_container = PopulationBinContainer(resolution=PASSENGER_TRANSFER_RESOLUTION_SEC)
         self.hourly_populationbin_container = PopulationBinContainer(resolution=PASSENGER_TRANSFER_RESOLUTION_SEC)
 
+        # some status variable to store update after each analysis
+        # passenger related
+        self.__last_passenger_offload_time = None
+        self.__last_passenger_offload_node_id = None
+        self.__last_passenger_offload_vehicle_id = None
+        self.__last_passenger_offload_route_id = None
+        self.__total_served_passenger = 0
+        # trip completion related
+        self.__last_trip_completion_time = None
+        self.__last_trip_completion_route_id = None
+        self.__last_trip_completion_vehicle_id = None
+
+    def __reset(self):
+        # reset the variable which will be updated after each analysis
+        self.__last_passenger_offload_time = None
+        self.__last_passenger_offload_node_id = None
+        self.__last_passenger_offload_vehicle_id = None
+        self.__last_passenger_offload_route_id = None
+        self.__total_served_passenger = 0
+
+        self.__last_trip_completion_time = None
+        self.__last_trip_completion_route_id = None
+        self.__last_trip_completion_vehicle_id = None
+
     def __analyze_event_log(self, avg_velocity_time_step_sec: int):
+        # reset the internally stored analysis data
+        self.__reset()
+
         self.speedbin_container.set_time_step(avg_velocity_time_step_sec=avg_velocity_time_step_sec)
         # for now we are only generating per hour transfer completion bar plot
         self.hourly_populationbin_container.set_time_step(transfer_bin_time_step_sec=3600)
@@ -219,6 +246,10 @@ class GraphGenerator:
                     if hour not in self.hourly_trip_completion_stat:
                         self.hourly_trip_completion_stat[hour] = 0
                     self.hourly_trip_completion_stat[hour] += 1
+
+                    self.__last_trip_completion_time = timestamp
+                    self.__last_trip_completion_route_id = route_id
+                    self.__last_trip_completion_vehicle_id = vehicle_id
                 elif event_type == "entering":
                     timestamp = float(result.groups()[6])
                     self.speedbin_container.vehicle_enter_data_entry(vehicle_id=vehicle_id, entry_time=timestamp)
@@ -231,11 +262,30 @@ class GraphGenerator:
                     pass
                 elif event_type == "offloading":
                     count = int(result.groups()[3])
+                    offloading_node_id = int(result.groups()[4])
                     timestamp = int(float(result.groups()[5]))
+
                     self.populationbin_container.passenger_reaching_data_entry(vehicle_id=vehicle_id, count=count,
                                                                                leave_time=timestamp)
                     self.hourly_populationbin_container.passenger_reaching_data_entry(
                         vehicle_id=vehicle_id, count=count, leave_time=timestamp)
+
+                    self.__last_passenger_offload_time = timestamp
+                    self.__last_passenger_offload_vehicle_id = vehicle_id
+                    self.__last_passenger_offload_node_id = offloading_node_id
+                    self.__last_passenger_offload_route_id = route_id
+                    self.__total_served_passenger += count
+
+    def get_total_served_passenger(self) -> int:
+        return self.__total_served_passenger
+
+    def get_last_passenger_served_data(self) -> (int, int, int, int):
+        return self.__last_passenger_offload_time, self.__last_passenger_offload_vehicle_id,\
+               self.__last_passenger_offload_node_id, self.__last_passenger_offload_route_id
+
+    def get_last_trip_completion_data(self) -> (int, int, int):
+        return self.__last_trip_completion_time, self.__last_trip_completion_vehicle_id,\
+               self.__last_trip_completion_route_id
 
     def generate(self, avg_velocity_time_step_sec: int):
         self.__analyze_event_log(avg_velocity_time_step_sec=avg_velocity_time_step_sec)

@@ -76,3 +76,18 @@ if __name__ == "__main__":
     if args.analyze:
         graph_generator: GraphGenerator = GraphGenerator()
         graph_generator.generate(avg_velocity_time_step_sec=args.time_step)
+
+        total_served_passenger = graph_generator.get_total_served_passenger()
+        last_passenger_serve_data = graph_generator.get_last_passenger_served_data()
+        last_trip_completion_data = graph_generator.get_last_trip_completion_data()
+
+        print("total served passenger : {0}".format(total_served_passenger))
+        print("Last passenger is offloaded by vehicle {0} at time {1} in stop {2} and route {3}".format(
+                last_passenger_serve_data[1], last_passenger_serve_data[0], last_passenger_serve_data[2],
+                last_passenger_serve_data[3]
+            )
+        )
+        print("Last trip is complete by vehicle {0} at time {1} in route {2}".format(
+            last_trip_completion_data[1], last_trip_completion_data[0], last_trip_completion_data[2]
+        ))
+        print("graphs are saved in {0}".format(os.path.abspath(os.path.curdir)))

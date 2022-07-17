@@ -176,6 +176,21 @@ class AnalysisThread(threading.Thread):
         try:
             analyzer = GraphGenerator()
             analyzer.generate(avg_velocity_time_step_sec=self.time_step)
+
+            total_served_passenger = analyzer.get_total_served_passenger()
+            last_passenger_serve_data = analyzer.get_last_passenger_served_data()
+            last_trip_completion_data = analyzer.get_last_trip_completion_data()
+
+            self.window_object.update_message("total served passenger : {0}".format(total_served_passenger))
+            self.window_object.update_message(
+                "Last passenger is offloaded by vehicle {0} at time {1} in stop {2} and route {3}".format(
+                    last_passenger_serve_data[1], last_passenger_serve_data[0], last_passenger_serve_data[2],
+                    last_passenger_serve_data[3]
+                )
+            )
+            self.window_object.update_message("Last trip is complete by vehicle {0} at time {1} in route {2}".format(
+                last_trip_completion_data[1], last_trip_completion_data[0], last_trip_completion_data[2]
+            ))
             self.window_object.update_message("graphs are saved in {0}".format(os.path.abspath(os.path.curdir)))
         except FileNotFoundError as e:
             self.window_object.update_message("{0}/event_log.txt not found".format(os.path.abspath(".")))

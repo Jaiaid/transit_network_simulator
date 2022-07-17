@@ -33,16 +33,27 @@ if __name__ == "__main__":
 
     # simulate
     if args.simulate:
-        nodecap_filepath = "{0}/stopcap.txt".format(args.input_dir)
-        edgecap_filepath = "{0}/edgecap.txt".format(args.input_dir)
         network_filepath = "{0}/network.txt".format(args.input_dir)
         demand_filepath = "{0}/demand.txt".format(args.input_dir)
         fleet_filepath = "{0}/fleet.txt".format(args.input_dir)
         route_filepath = "{0}/route.txt".format(args.input_dir)
+        # edgecap file is same as network file if not provided
+        # later condition will check for existance and update the path if found
+        edgecap_filepath = "{0}/network.txt".format(args.input_dir)
         routestop_filepath = None
+        nodecap_filepath = None
 
+        # check if edgecap file exists, if not inform user in console that it does not exist
+        if os.path.exists("{0}/edgecap.txt".format(args.input_dir)):
+            edgecap_filepath = "{0}/edgecap.txt".format(args.input_dir)
+        else:
+            print(
+                "edgecap.txt not found in input directory, network.txt will be used as edge capacity data"
+            )
         if os.path.exists("{0}/route_stops.txt".format(args.input_dir)):
             routestop_filepath = "{0}/route_stops.txt".format(args.input_dir)
+        if os.path.exists("{0}/stopcap.txt".format(args.input_dir)):
+            nodecap_filepath = "{0}/stopcap.txt".format(args.input_dir)
 
         # init necessary class and modules
         simulator: Simulator = Simulator()

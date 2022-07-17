@@ -205,16 +205,28 @@ class SimulationThread(threading.Thread):
         try:
             input_dir = self.window_object.input_dir_path.text()
 
-            nodecap_filepath = "{0}/stopcap.txt".format(input_dir)
-            edgecap_filepath = "{0}/edgecap.txt".format(input_dir)
             network_filepath = "{0}/network.txt".format(input_dir)
             demand_filepath = "{0}/demand.txt".format(input_dir)
             fleet_filepath = "{0}/fleet.txt".format(input_dir)
             route_filepath = "{0}/route.txt".format(input_dir)
+            # edgecap file is same as network file if not provided
+            # later condition will check for existance and update the path if found
+            edgecap_filepath = "{0}/network.txt".format(input_dir)
             routestop_filepath = None
+            nodecap_filepath = None
+
+            # check if edgecap file exists, if not inform user in ui that it does not exist
+            if os.path.exists("{0}/edgecap.txt".format(input_dir)):
+                edgecap_filepath = "{0}/edgecap.txt".format(input_dir)
+            else:
+                self.window_object.update_message(
+                    "edgecap.txt not found in input directory, network.txt will be used as edge capacity data"
+                )
 
             if os.path.exists("{0}/route_stops.txt".format(input_dir)):
                 routestop_filepath = "{0}/route_stops.txt".format(input_dir)
+            if os.path.exists("{0}/stopcap.txt".format(input_dir)):
+                nodecap_filepath = "{0}/stopcap.txt".format(input_dir)
 
             # progress bar crash is solved
             # crash is solved by using signal and slot to avoid updating progress bar from another thread

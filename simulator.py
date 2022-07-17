@@ -57,8 +57,8 @@ class Simulator:
         self.__load_vehicle_strategy(vehicle_strategy_full_import_string=strategy_script_path + ".VehicleStrategy")
 
     def __load_network_data(self, networkdata_filepath: str, demanddata_filepath: str,
-                            fleetdata_filepath: str, edgedata_filepath: str, stopdata_filepath: str,
-                            node_class_script_path: str):
+                            fleetdata_filepath: str, edgedata_filepath: str, node_class_script_path: str,
+                            stopdata_filepath: str = None):
         self.network.load_network_data(network_filepath=networkdata_filepath,
                                        network_demand_filepath=demanddata_filepath,
                                        network_edgecap_filepath=edgedata_filepath,
@@ -84,9 +84,9 @@ class Simulator:
 
     def simulate(self, strategy_script_path: str, node_script_path: str,
                  networkdata_filepath: str, demanddata_filepath: str,
-                 fleetdata_filepath: str, edgedata_filepath: str, stopdata_filepath: str,
+                 fleetdata_filepath: str, edgedata_filepath: str,
                  routedata_filepath: str, perroutestopdata_filepath: str,
-                 time_length: int):
+                 time_length: int, stopdata_filepath: str=None):
 
         Logger.log("loading data and node class")
         self.__load_network_data(

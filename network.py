@@ -22,7 +22,13 @@ class NetworkEdgeData:
                 self.cap_data.append([])
 
                 for token in line.split():
-                    self.cap_data[-1].append(int(token))
+                    # network.txt maybe used as edge capacity data
+                    # in network.txt -1 is used to indicate no connection/link not exist
+                    # hence it should be zero capacity
+                    edge_capacity = float(token)
+                    if edge_capacity == -1:
+                        edge_capacity = 0
+                    self.cap_data[-1].append(edge_capacity)
 
 
 class NetworkNodeData:
@@ -36,11 +42,12 @@ class NetworkNodeData:
     def get_demand_dict(self, node_id: int) -> dict[int, int]:
         return self.demand_dict_list[node_id]
 
-    def load_data(self, demand_filepath: str, vehicle_capfilepath: str):
+    def load_data(self, demand_filepath: str, vehicle_capfilepath: str=None):
         self.cap_data = []
-        with open(vehicle_capfilepath) as fin:
-            for line in fin.readlines():
-                self.cap_data.append(int(line))
+        if vehicle_capfilepath is not None:
+            with open(vehicle_capfilepath) as fin:
+                for line in fin.readlines():
+                    self.cap_data.append(int(line))
 
         self.demand_dict_list = []
         with open(demand_filepath) as fin:
@@ -52,6 +59,10 @@ class NetworkNodeData:
                     self.demand_dict_list[src_id][dst_id] = int(token)
                     dst_id += 1
                 src_id += 1
+
+        # if no capacity data given assume capacity 1
+        if vehicle_capfilepath is None:
+            self.cap_data = [1] * len(self.demand_dict_list)
 
 
 class Network:
@@ -100,7 +111,7 @@ class Network:
                 route_id += 1
 
     def load_network_data(self, network_filepath: str, network_edgecap_filepath: str, network_demand_filepath: str,
-                          network_nodecap_filepath: str, node_class_script_path: str):
+                          node_class_script_path: str, network_nodecap_filepath: str=None):
         self.__load_node_class(node_class_full_import_string=node_class_script_path + ".Node")
         self.edge_cap_data.load_data(network_edgecap_filepath)
         self.node_data.load_data(network_demand_filepath, network_nodecap_filepath)

@@ -50,8 +50,9 @@ class DispatchStrategy:
         start_vehicle_id = 0
         total_assigned = 0
         for route_id in self.route_demand_dict:
-            assigned_vehicle_count = int(self.route_demand_dict[route_id] * len(self.dispatcher.fleet.vehicle_dict)
-                                         // total_demand)
+            # at least one vehicle will be assigned
+            assigned_vehicle_count = max(1, int(self.route_demand_dict[route_id] * len(self.dispatcher.fleet.vehicle_dict)
+                                         // total_demand))
             end_vehicle_id = start_vehicle_id + assigned_vehicle_count
 
             if route_id not in route_id_to_latest_departure_time_dict:

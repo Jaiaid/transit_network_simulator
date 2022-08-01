@@ -21,12 +21,32 @@ run main.py to run cmd line simulation
 ```
 Output should be
 ```
-usage: main.py [-h] -input INPUT_DIR [-sim] [-simtime SIMULATE_TIME_LENGTH] [-al] [-ts TIME_STEP] -ds DISPATCH_STRATEGY -vs VEHICLE_STRATEGY [-velplot AVGVELOCITY_PLOT]
-               [-eplot EVACTIME_PLOT] [-tplot TRIPCOMPLETE_PLOT]
+usage: main.py [-h] -input INPUT_DIR [-sim] [-simtime SIMULATE_TIME_LENGTH] [-al] [-ts TIME_STEP] -st STRATEGY_CLASS_SCRIPT_PATH -nc NODE_CLASS_SCRIPT_PATH [-velplot AVGVELOCITY_PLOT] [-eplot EVACTIME_PLOT] [-tplot TRIPCOMPLETE_PLOT]
+
 main.py: error: the following arguments are required: -input/--input_dir, -ds/--dispatch_strategy, -vs/--vehicle_strategy
 ```
 
 Corresponding exe is "transport_simulator_cmd.exe"
+
+The meanings of the useful arguments are given below (got by using -h argument when executing main.py)
+```
+-h, --help            show this help message and exit
+-input INPUT_DIR, --input_dir INPUT_DIR
+					folder path containing the input files
+-sim, --simulate      if will simulate from input data
+-simtime SIMULATE_TIME_LENGTH, --simulate_time_length SIMULATE_TIME_LENGTH
+					how many unit time to simulate
+-al, --analyze        if will analyze even-log.txt and generate graphs
+-ts TIME_STEP, --time_step TIME_STEP
+					time step used in generate data point for graphs
+-st STRATEGY_CLASS_SCRIPT_PATH, --strategy_class_script_path STRATEGY_CLASS_SCRIPT_PATH
+					script path containing VehicleStrategy and DispatchStrategy class
+-nc NODE_CLASS_SCRIPT_PATH, --node_class_script_path NODE_CLASS_SCRIPT_PATH
+					script path containing Node class
+```
+
+Although there are some other arguments, those are for future implementations.
+
 
 ### simulator UI
 ![simulator ui image](./doc/simulator_ui.PNG)

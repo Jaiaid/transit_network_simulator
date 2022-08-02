@@ -3,7 +3,8 @@ import os
 import sys
 import importlib.util
 
-from networkprimitive import Edge, Node, Route
+from networkprimitive import Edge, Route
+from node import Node
 
 INF_CAP = -1
 

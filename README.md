@@ -55,6 +55,7 @@ Corresponding exe is "transport_simulator.exe"
 
 ### visualizer cmd line tool
 
+This does not work well.
 run network_visualizer.py to visualize network based on given input
 ```
 > python .\network_visualizer.py

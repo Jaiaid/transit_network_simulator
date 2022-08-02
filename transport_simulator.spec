@@ -5,7 +5,7 @@ block_cipher = None
 
 
 a = Analysis(
-    ['main_ui.py', 'main_window_ui.py', 'network.py', 'networkprimitive.py', 'simulator.py', 'vehicle.py',
+    ['main_ui.py', 'main_window_ui.py', 'network.py', 'networkprimitive.py', 'node.py', 'simulator.py', 'vehicle.py',
     'strategy.py', 'dispatcher.py', 'fleet.py', 'graph_generator.py', 'logger.py'],
     pathex=[],
     binaries=[],
@@ -41,7 +41,7 @@ windowed_exe = EXE(
 )
 
 b = Analysis(
-    ['main.py', 'network.py', 'networkprimitive.py', 'simulator.py', 'vehicle.py',
+    ['main.py', 'network.py', 'networkprimitive.py', 'node.py', 'simulator.py', 'vehicle.py',
     'strategy.py', 'dispatcher.py', 'fleet.py', 'graph_generator.py', 'logger.py'],
     pathex=[],
     binaries=[],
@@ -77,7 +77,7 @@ console_exe = EXE(
 )
 
 c = Analysis(
-    ['network_visualizer.py', 'network.py', 'networkprimitive.py', 'vehicle.py', 'fleet.py', 'logger.py'],
+    ['network_visualizer.py', 'network.py', 'networkprimitive.py', 'node.py', 'vehicle.py', 'fleet.py', 'logger.py'],
     pathex=[],
     binaries=[],
     datas=[],

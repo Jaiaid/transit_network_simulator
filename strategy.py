@@ -1,7 +1,8 @@
 import simpy
 import copy
 
-from networkprimitive import Node, Edge, Route
+from networkprimitive import Edge
+from node import Node
 from network import Network
 from vehicle import Vehicle
 from dispatcher import Dispatcher
@@ -25,18 +26,23 @@ class VehicleStrategy:
         self.forward_route_node_id_list = copy.deepcopy(route.route_node_list)
         self.backward_route_node_id_list = list(reversed(route.route_node_list))
 
-    def transfer_pass(self):
-        yield self.env.timeout(2)
+    # return next_node_id, will_stop, passenger_pick_count, will_continue, wait time
+    # default implementation here goto nowhere, just signal that forward pass is complete (will_continue==False)
+    def get_next_forward_node(self) -> (int, bool, int, bool, int):
+        return 0, False, 0, False, 0
 
-    def get_next_forward_node(self) -> (int, bool, int, bool):
-        return 0, False, 0, False
+    # return next_node_id, will_stop, passenger_pick_count, will_continue, wait time
+    # default implementation here goto nowhere, just signal that backward pass is complete (will_continue==False)
+    def get_next_backward_node(self) -> (int, bool, int, bool, int):
+        return 0, False, 0, False, 0
 
-    def get_next_backward_node(self) -> (int, bool, int, bool):
-        return 0, False, 0, False
+    # return next_node_id, will_stop, passenger_pick_count, will_continue, wait time
+    # default implementation here goto nowhere, just signal that transfer pass is complete (will_continue==False)
+    def get_next_transfer_node(self) -> (int, bool, int, bool, int):
+        return 0, False, 0, False, 0
 
-    def get_next_transfer_node(self) -> (int, bool, int, bool):
-        return 0, False, 0, False
-
+    # return how many passengers will be picked up
+    # this implementation greedily takes passenger from node and returns how much passenger can be increased
     def passenger_fill(self, stop: Node) -> int:
         demand_dict = self.vehicle.network.get_demand(stop.id)
         passenger_increase = 0
@@ -52,9 +58,11 @@ class VehicleStrategy:
 
         return passenger_increase
 
+    # offload passenger to the input Node
     def passenger_drain(self, stop: Node):
         self.vehicle.passenger_out(stop_id=stop.id)
 
+    # notify dispatcher about backward pass completion
     def signal_completion(self):
         self.dispatcher.notify(self.vehicle.id)
 
@@ -64,6 +72,8 @@ class DispatchStrategy:
         self.dispatcher: Dispatcher = dispatcher
         self.env = env
 
+    # assign route according to given network
+    # this implementation just do a round robin assignment
     def assign_route(self, network: Network):
         # basic round robin assignment
         route_id = 0
@@ -72,7 +82,8 @@ class DispatchStrategy:
             route_id += 1
             route_id %= len(self.dispatcher.network.route_list)
 
-    # return will transfer, will do roundtrip again
+    # return two boolean
+    # will transfer?, will do roundtrip again?
     def update_route(self, network: Network, vehicle: Vehicle) -> (bool, bool):
         if any(self.dispatcher.completion_flag):
             pass

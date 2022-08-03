@@ -4,13 +4,44 @@ This repository contains a transit network simulation framework written in Pytho
  - cmd line simulator
  - Qt5 UI for cmd line simulation tool
  - event log analysis and some graph generation
- - cmd line tool for network congestion visualization based on networkx and matplotlib
+ - cmd line tool for network congestion visualization based on networkx and matplotlib (does not work well, will be done in future)
 
 With each release a zip will be provided which contains a folder containing windows executable built using pyinstaller5.1
 
 ## Requirements
 Tested with Python3.9
 Exes are run and tested in Windows 10
+
+## Usage
+User needs to provide both code and data to simulate their model. How to input these can be found at Tools section of this README.md.
+
+### Data Requirement
+Data is provided by providing the folder containing some data files. All files are txt files.
+- network.txt
+- demand.txt
+- route.txt
+- fleet.txt
+- edgecap.txt
+
+Among these, only edgecap.txt is optional. If not provided, simulator will use network.txt information to fulfill capacity information of all the edges in network. (How it is used depends on user provided model)
+
+### Code Requirement
+User provided code will determine behavior of three agents in the simulation. They are,
+- Vehicle
+- Dispatcher
+- Node
+
+Basic simulation model is this, Vehicle is dispatched to a route by Dispatcher. Vehicle do a forward pass and  backward pass. Then signals Dispatcher if it likes to continue. Dispatcher will decide if will continue in same route or different route. Node acts like a supplier of demand (currently as a sink is not implemented). Vehicle takes demand from one Node and offload the demand to another. By demand we thought of passenger but interpretation is not limited to passengers.
+
+To change their behavior, user has to provide their implementation of following classes
+- VehicleStrategy (default implementation is in strategy.py)
+- DispatchStrategy (default implementation is in strategy.py)
+- Node (default implementation is in node.py)
+
+Default implementation contains the necessary methods and their interface description. Default implementation Node just have demand according to given demand.txt. Default DispatchStrategy just do a round robin fleet assignment at begining and no rerouting. Default VehicleStrategy do nothing, just sit and exit. 
+
+An example where Vehicle do one roundtrip and stop at every node to greediliy pick up passenger and offload if it contains some passenger for current stop can be found in simple_model folder of the repo.
+
 
 ## Tools
 

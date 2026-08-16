@@ -98,3 +98,18 @@ network_visualizer.py: error: the following arguments are required: -dir/--input
 ```
 
 Corresponding exe is "visualizer.exe"
+
+## Citation
+If you use our developed simulator's provided result in your work, please cite our [paper](https://doi.org/10.1016/j.trip.2023.100798):
+
+```
+@article{kabir2023multi,
+  title={Multi-objective optimization and heuristic based solutions for evacuation modeling},
+  author={Kabir, Mohimenul and Mobin, Jaiaid and Nayeem, Muhammad Ali and Habib, Muhammad Ahsanul and Rahman, M Sohel},
+  journal={Transportation research interdisciplinary perspectives},
+  volume={18},
+  pages={100798},
+  year={2023},
+  publisher={Elsevier}
+}
+```
